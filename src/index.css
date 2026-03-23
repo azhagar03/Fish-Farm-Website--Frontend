@@ -1,0 +1,508 @@
+/* src/index.css - Muthupandi Fish Farm Global Styles */
+
+/* ─── Design Tokens ────────────────────────────────────────────────────────── */
+:root {
+  --ocean-deep: #020b18;
+  --ocean-mid: #041f3b;
+  --ocean-blue: #0a3d6b;
+  --ocean-teal: #0e7490;
+  --ocean-light: #06b6d4;
+  --ocean-glow: #22d3ee;
+  --ocean-foam: #cffafe;
+  --gold: #f59e0b;
+  --gold-light: #fcd34d;
+  --coral: #ef4444;
+  --green-sea: #10b981;
+  --text-primary: #f0f9ff;
+  --text-secondary: #94a3b8;
+  --card-bg: rgba(4, 31, 59, 0.85);
+  --glass: rgba(6, 182, 212, 0.08);
+  --glass-border: rgba(6, 182, 212, 0.2);
+  --font-display: 'Cinzel Decorative', serif;
+  --font-body: 'Raleway', sans-serif;
+  --font-accent: 'Playfair Display', serif;
+}
+
+/* ─── Reset & Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--ocean-deep);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  line-height: 1.7;
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--ocean-deep); }
+::-webkit-scrollbar-thumb { background: var(--ocean-teal); border-radius: 3px; }
+
+/* ─── Bubbles Animation ────────────────────────────────────────────────────── */
+@keyframes bubble-rise {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.3; }
+  100% { transform: translateY(-100px) scale(1.2); opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-20px) rotate(2deg); }
+  66% { transform: translateY(-10px) rotate(-2deg); }
+}
+
+@keyframes swim {
+  0% { transform: translateX(-200px) scaleX(1); opacity: 0; }
+  10% { opacity: 1; }
+  45% { transform: translateX(50vw) scaleX(1); }
+  50% { transform: translateX(50vw) scaleX(-1); }
+  90% { opacity: 1; }
+  100% { transform: translateX(-200px) scaleX(-1); opacity: 0; }
+}
+
+@keyframes wave {
+  0% { transform: translateX(0) scaleY(1); }
+  50% { transform: translateX(-25%) scaleY(0.9); }
+  100% { transform: translateX(-50%) scaleY(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(6, 182, 212, 0.8), 0 0 80px rgba(6, 182, 212, 0.3); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ticker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* ─── Bubble Layer ─────────────────────────────────────────────────────────── */
+.bubbles-container {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bubble {
+  position: absolute;
+  bottom: -100px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(34, 211, 238, 0.4), rgba(6, 182, 212, 0.1));
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  animation: bubble-rise linear infinite;
+}
+
+/* ─── Ocean Wave ───────────────────────────────────────────────────────────── */
+.wave-container {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 200%;
+  height: 120px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.wave {
+  width: 100%;
+  height: 100%;
+  animation: wave 8s linear infinite;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 120'%3E%3Cpath fill='rgba(4,31,59,0.9)' d='M0,60 C240,100 480,20 720,60 C960,100 1200,20 1440,60 L1440,120 L0,120 Z'/%3E%3C/svg%3E") repeat-x;
+  background-size: 50% 100%;
+}
+
+/* ─── Glassmorphism Cards ──────────────────────────────────────────────────── */
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(6, 182, 212, 0.5);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px rgba(6, 182, 212, 0.15);
+}
+
+/* ─── Buttons ──────────────────────────────────────────────────────────────── */
+.btn-ocean {
+  background: linear-gradient(135deg, var(--ocean-teal), var(--ocean-light));
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 50px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ocean::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-ocean:hover::after { left: 100%; }
+.btn-ocean:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(6, 182, 212, 0.4);
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, #f59e0b, #fcd34d);
+  color: #020b18;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 50px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+}
+
+/* ─── Section Titles ───────────────────────────────────────────────────────── */
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  background: linear-gradient(135deg, var(--ocean-glow), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+}
+
+.section-subtitle {
+  font-family: var(--font-accent);
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 1.1rem;
+  margin-bottom: 3rem;
+}
+
+/* ─── Price Ticker ─────────────────────────────────────────────────────────── */
+.price-ticker-bar {
+  background: linear-gradient(90deg, var(--ocean-mid), var(--ocean-blue), var(--ocean-mid));
+  border-top: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 8px 0;
+}
+
+.ticker-content {
+  display: inline-block;
+  animation: ticker 30s linear infinite;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ─── Navbar ───────────────────────────────────────────────────────────────── */
+.navbar-custom {
+  background: rgba(2, 11, 24, 0.92) !important;
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.navbar-brand-text {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  background: linear-gradient(135deg, var(--ocean-glow), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 1px;
+}
+
+.nav-link-custom {
+  color: var(--text-secondary) !important;
+  font-weight: 500;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  padding: 8px 16px !important;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.nav-link-custom:hover {
+  color: var(--ocean-glow) !important;
+  background: var(--glass);
+}
+
+/* ─── Hero Section ─────────────────────────────────────────────────────────── */
+.hero-section {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #020b18 0%, #041f3b 40%, #0a3d6b 70%, #020b18 100%);
+}
+
+.hero-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(6, 182, 212, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 50%, rgba(245, 158, 11, 0.1) 0%, transparent 60%);
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 7vw, 6rem);
+  line-height: 1.1;
+  color: white;
+  text-shadow: 0 0 60px rgba(6, 182, 212, 0.4);
+  animation: fadeInUp 1s ease forwards;
+}
+
+.hero-title .highlight {
+  background: linear-gradient(135deg, var(--ocean-glow), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-subtitle {
+  font-family: var(--font-accent);
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  color: var(--ocean-foam);
+  opacity: 0.85;
+  animation: fadeInUp 1s ease 0.3s both;
+}
+
+/* ─── Fish Cards ───────────────────────────────────────────────────────────── */
+.fish-card {
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  animation: scaleIn 0.6s ease both;
+}
+
+.fish-card:hover {
+  transform: translateY(-12px) scale(1.02);
+  border-color: var(--ocean-light);
+  box-shadow: 0 30px 60px rgba(6, 182, 212, 0.25);
+}
+
+.fish-emoji {
+  font-size: 4rem;
+  text-align: center;
+  padding: 24px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.1), transparent);
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ─── Price Badge ──────────────────────────────────────────────────────────── */
+.price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(252, 211, 77, 0.1));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: var(--gold-light);
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.price-up { color: #4ade80; }
+.price-down { color: #f87171; }
+
+/* ─── Stats Section ────────────────────────────────────────────────────────── */
+.stat-card {
+  text-align: center;
+  padding: 40px 24px;
+  animation: pulse-glow 3s ease infinite;
+}
+
+.stat-number {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  background: linear-gradient(135deg, var(--ocean-glow), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Admin Panel ──────────────────────────────────────────────────────────── */
+.admin-sidebar {
+  background: var(--ocean-mid);
+  min-height: 100vh;
+  border-right: 1px solid var(--glass-border);
+  padding: 24px 0;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+  font-weight: 500;
+}
+
+.admin-nav-item:hover,
+.admin-nav-item.active {
+  background: var(--glass);
+  color: var(--ocean-glow);
+  border-left-color: var(--ocean-glow);
+}
+
+.admin-content {
+  background: var(--ocean-deep);
+  min-height: 100vh;
+  padding: 32px;
+}
+
+/* ─── Invoice Styles ───────────────────────────────────────────────────────── */
+.invoice-table th {
+  background: var(--ocean-blue);
+  color: var(--ocean-foam);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.invoice-table td {
+  vertical-align: middle;
+  color: var(--text-primary);
+}
+
+.invoice-total-row {
+  background: rgba(6, 182, 212, 0.1);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--ocean-glow);
+}
+
+/* ─── Print Invoice Styles ─────────────────────────────────────────────────── */
+@media print {
+  body { background: white !important; color: black !important; }
+  .no-print { display: none !important; }
+  .print-invoice {
+    background: white !important;
+    color: black !important;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+  .print-invoice * { color: black !important; }
+  .print-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+  .print-table { width: 100%; border-collapse: collapse; }
+  .print-table th, .print-table td { border: 1px solid #000; padding: 8px; font-size: 12px; }
+  .print-table th { background: #f0f0f0 !important; font-weight: bold; }
+}
+
+/* ─── Animations for sections ──────────────────────────────────────────────── */
+.animate-fadeInUp { animation: fadeInUp 0.7s ease both; }
+.animate-delay-1 { animation-delay: 0.1s; }
+.animate-delay-2 { animation-delay: 0.2s; }
+.animate-delay-3 { animation-delay: 0.3s; }
+.animate-delay-4 { animation-delay: 0.4s; }
+.animate-delay-5 { animation-delay: 0.5s; }
+
+/* ─── Form Inputs ──────────────────────────────────────────────────────────── */
+.input-ocean {
+  background: rgba(4, 31, 59, 0.8) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 8px !important;
+  transition: all 0.2s;
+}
+
+.input-ocean:focus {
+  border-color: var(--ocean-light) !important;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15) !important;
+  outline: none !important;
+}
+
+.input-ocean::placeholder { color: var(--text-secondary) !important; }
+
+/* select dropdown */
+.input-ocean option {
+  background: var(--ocean-mid);
+  color: var(--text-primary);
+}
+
+/* ─── Table ────────────────────────────────────────────────────────────────── */
+.table-ocean {
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: rgba(6, 182, 212, 0.03);
+  --bs-table-hover-bg: rgba(6, 182, 212, 0.08);
+  --bs-table-color: var(--text-primary);
+  --bs-table-border-color: var(--glass-border);
+}
+
+.table-ocean thead th {
+  background: rgba(14, 116, 144, 0.3);
+  border-color: var(--glass-border);
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ocean-foam);
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .hero-title { font-size: 2.5rem; }
+  .admin-sidebar { min-height: auto; }
+}
