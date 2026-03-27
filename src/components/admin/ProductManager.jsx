@@ -1,10 +1,9 @@
-// src/components/admin/ProductManager.jsx - Full CRUD for products
+// src/components/admin/ProductManager.jsx - Full CRUD + Stock Management
 import React, { useEffect, useState } from 'react';
 import { productAPI } from '../../services/api';
 
 const CATEGORIES = ['Fish', 'Filter', 'Equipment', 'Feed', 'Medicine', 'Accessories', 'Transport', 'Other'];
 const UNITS = ['Pcs', 'Nos', 'Kg', 'Ltr', 'Round', 'Set', 'Pair'];
-
 const EMPTY_FORM = { name: '', category: 'Other', description: '', price: '', unit: 'Pcs', stock: '', isActive: true };
 
 const ProductManager = () => {
@@ -17,6 +16,7 @@ const ProductManager = () => {
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('');
   const [toast, setToast] = useState(null);
+  const [stockAdjust, setStockAdjust] = useState({}); // { productId: inputValue }
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -89,6 +89,20 @@ const ProductManager = () => {
     }
   };
 
+  // Stock adjustment: increase or decrease by given amount
+  const handleStockChange = async (product, delta) => {
+    const adjust = parseInt(stockAdjust[product._id] || 1);
+    if (!adjust || adjust <= 0) { showToast('Enter a valid adjustment quantity', 'error'); return; }
+    const newStock = Math.max(0, (parseInt(product.stock) || 0) + (delta * adjust));
+    try {
+      await productAPI.update(product._id, { ...product, stock: newStock });
+      showToast(`Stock ${delta > 0 ? 'increased' : 'decreased'} to ${newStock} ${product.unit}`);
+      loadProducts();
+    } catch {
+      showToast('Error updating stock', 'error');
+    }
+  };
+
   const filtered = products.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const matchCat = !filterCat || p.category === filterCat;
@@ -96,27 +110,20 @@ const ProductManager = () => {
   });
 
   const catColor = cat => ({ Fish: '#06b6d4', Filter: '#8b5cf6', Equipment: '#f59e0b', Feed: '#10b981', Medicine: '#ef4444', Accessories: '#ec4899', Transport: '#6366f1', Other: '#94a3b8' }[cat] || '#94a3b8');
+  const stockColor = s => s > 10 ? 'var(--green-sea)' : s > 0 ? '#fbbf24' : '#ef4444';
 
   return (
     <div>
-      {/* Toast */}
       {toast && (
-        <div style={{
-          position: 'fixed', top: 20, right: 20, zIndex: 9999,
-          background: toast.type === 'error' ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)',
-          color: 'white', padding: '12px 20px', borderRadius: 10, fontWeight: 600,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)', animation: 'fadeInUp 0.3s ease'
-        }}>
-          <i className={`bi ${toast.type === 'error' ? 'bi-x-circle' : 'bi-check-circle'} me-2`} />
-          {toast.msg}
+        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, background: toast.type === 'error' ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)', color: 'white', padding: '12px 20px', borderRadius: 10, fontWeight: 600, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+          <i className={`bi ${toast.type === 'error' ? 'bi-x-circle' : 'bi-check-circle'} me-2`} />{toast.msg}
         </div>
       )}
 
-      {/* Header */}
       <div className="d-flex flex-wrap gap-3 align-items-center justify-content-between mb-4">
         <div>
           <h5 style={{ margin: 0, fontFamily: 'var(--font-accent)', color: 'var(--ocean-foam)' }}>Product Management</h5>
-          <small style={{ color: 'var(--text-secondary)' }}>{products.length} products in database</small>
+          <small style={{ color: 'var(--text-secondary)' }}>{products.length} products • {products.filter(p => p.stock < 10).length} low stock</small>
         </div>
         <div className="d-flex gap-2 flex-wrap">
           <button className="btn" onClick={handleSeed} style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc', fontSize: '0.82rem' }}>
@@ -128,65 +135,32 @@ const ProductManager = () => {
         </div>
       </div>
 
-      {/* Add/Edit Form */}
       {showForm && (
         <div className="glass-card p-4 mb-4">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h6 style={{ margin: 0, color: 'var(--ocean-glow)', fontFamily: 'var(--font-accent)' }}>{editId ? 'Edit Product' : 'Add New Product'}</h6>
-            <button onClick={() => { setShowForm(false); setEditId(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>
-              <i className="bi bi-x" />
-            </button>
+            <button onClick={() => { setShowForm(false); setEditId(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}><i className="bi bi-x" /></button>
           </div>
           <form onSubmit={handleSubmit}>
             <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Product Name *</label>
-                <input name="name" className="form-control input-ocean" value={form.name} onChange={handleChange} required placeholder="e.g. RS188A TOPFILTER" />
-              </div>
-              <div className="col-md-3">
-                <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Category</label>
-                <select name="category" className="form-select input-ocean" value={form.category} onChange={handleChange}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="col-md-3">
-                <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Unit</label>
-                <select name="unit" className="form-select input-ocean" value={form.unit} onChange={handleChange}>
-                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Price (₹) *</label>
-                <input name="price" type="number" step="0.01" min="0" className="form-control input-ocean" value={form.price} onChange={handleChange} required placeholder="0.00" />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Stock Quantity</label>
-                <input name="stock" type="number" min="0" className="form-control input-ocean" value={form.stock} onChange={handleChange} placeholder="0" />
-              </div>
+              <div className="col-md-6"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Product Name *</label><input name="name" className="form-control input-ocean" value={form.name} onChange={handleChange} required placeholder="e.g. RS188A TOPFILTER" /></div>
+              <div className="col-md-3"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Category</label><select name="category" className="form-select input-ocean" value={form.category} onChange={handleChange}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+              <div className="col-md-3"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Unit</label><select name="unit" className="form-select input-ocean" value={form.unit} onChange={handleChange}>{UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+              <div className="col-md-4"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Price (₹) *</label><input name="price" type="number" step="0.01" min="0" className="form-control input-ocean" value={form.price} onChange={handleChange} required placeholder="0.00" /></div>
+              <div className="col-md-4"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Stock Quantity</label><input name="stock" type="number" min="0" className="form-control input-ocean" value={form.stock} onChange={handleChange} placeholder="0" /></div>
               <div className="col-md-4 d-flex align-items-end">
-                <div className="form-check form-switch">
-                  <input className="form-check-input" type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} id="activeSwitch" style={{ width: '3em', height: '1.5em' }} />
-                  <label className="form-check-label ms-2" htmlFor="activeSwitch" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active</label>
-                </div>
+                <div className="form-check form-switch"><input className="form-check-input" type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} id="activeSwitch" style={{ width: '3em', height: '1.5em' }} /><label className="form-check-label ms-2" htmlFor="activeSwitch" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active</label></div>
               </div>
-              <div className="col-12">
-                <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Description</label>
-                <textarea name="description" className="form-control input-ocean" rows="2" value={form.description} onChange={handleChange} placeholder="Optional description..." />
-              </div>
+              <div className="col-12"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Description</label><textarea name="description" className="form-control input-ocean" rows="2" value={form.description} onChange={handleChange} placeholder="Optional description..." /></div>
             </div>
             <div className="d-flex gap-2 mt-3">
-              <button type="submit" className="btn-ocean btn" disabled={saving}>
-                {saving ? <><span className="spinner-border spinner-border-sm me-2" />Saving...</> : <><i className="bi bi-check2 me-1" />{editId ? 'Update' : 'Create'} Product</>}
-              </button>
-              <button type="button" className="btn" onClick={() => { setShowForm(false); setEditId(null); }} style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
-                Cancel
-              </button>
+              <button type="submit" className="btn-ocean btn" disabled={saving}>{saving ? <><span className="spinner-border spinner-border-sm me-2" />Saving...</> : <><i className="bi bi-check2 me-1" />{editId ? 'Update' : 'Create'} Product</>}</button>
+              <button type="button" className="btn" onClick={() => { setShowForm(false); setEditId(null); }} style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>Cancel</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Filters */}
       <div className="glass-card p-3 mb-3">
         <div className="row g-2 align-items-center">
           <div className="col-sm-6">
@@ -195,19 +169,11 @@ const ProductManager = () => {
               <input className="form-control input-ocean" style={{ border: 'none' }} placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
-          <div className="col-sm-4">
-            <select className="form-select input-ocean" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-              <option value="">All Categories</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="col-sm-2 text-end">
-            <small style={{ color: 'var(--text-secondary)' }}>{filtered.length} results</small>
-          </div>
+          <div className="col-sm-4"><select className="form-select input-ocean" value={filterCat} onChange={e => setFilterCat(e.target.value)}><option value="">All Categories</option>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+          <div className="col-sm-2 text-end"><small style={{ color: 'var(--text-secondary)' }}>{filtered.length} results</small></div>
         </div>
       </div>
 
-      {/* Product Table */}
       <div className="glass-card overflow-hidden">
         {loading ? (
           <div className="text-center py-5"><div className="spinner-border" style={{ color: 'var(--ocean-light)' }} /></div>
@@ -221,7 +187,7 @@ const ProductManager = () => {
                   <th>Category</th>
                   <th>Price</th>
                   <th>Unit</th>
-                  <th>Stock</th>
+                  <th style={{ minWidth: 200 }}>Stock Management</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -232,15 +198,50 @@ const ProductManager = () => {
                 ) : filtered.map((p, i) => (
                   <tr key={p._id}>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{i + 1}</td>
-                    <td style={{ fontWeight: 600, fontSize: '0.9rem' }}>{p.name}</td>
+                    <td style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                      {p.name}
+                      {p.stock < 10 && (
+                        <span style={{ marginLeft: 6, fontSize: '0.65rem', background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)', padding: '1px 6px', borderRadius: 10 }}>
+                          {p.stock === 0 ? 'OUT' : 'LOW'}
+                        </span>
+                      )}
+                    </td>
                     <td>
-                      <span style={{ background: `${catColor(p.category)}22`, color: catColor(p.category), border: `1px solid ${catColor(p.category)}44`, padding: '2px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600 }}>
-                        {p.category}
-                      </span>
+                      <span style={{ background: `${catColor(p.category)}22`, color: catColor(p.category), border: `1px solid ${catColor(p.category)}44`, padding: '2px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600 }}>{p.category}</span>
                     </td>
                     <td style={{ color: 'var(--gold-light)', fontWeight: 700 }}>₹{Number(p.price).toLocaleString('en-IN')}</td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{p.unit}</td>
-                    <td style={{ color: p.stock > 10 ? 'var(--green-sea)' : p.stock > 0 ? '#fbbf24' : 'var(--coral)', fontWeight: 600 }}>{p.stock}</td>
+                    <td>
+                      {/* Stock adjust controls */}
+                      <div className="d-flex align-items-center gap-1">
+                        <button
+                          onClick={() => handleStockChange(p, -1)}
+                          className="btn btn-sm"
+                          style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: 6, padding: '3px 8px', lineHeight: 1 }}
+                          title="Decrease stock"
+                        >
+                          <i className="bi bi-dash" />
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={stockAdjust[p._id] !== undefined ? stockAdjust[p._id] : 1}
+                          onChange={e => setStockAdjust(prev => ({ ...prev, [p._id]: e.target.value }))}
+                          style={{ width: 52, background: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--ocean-foam)', padding: '3px 6px', fontSize: '0.82rem', textAlign: 'center' }}
+                        />
+                        <button
+                          onClick={() => handleStockChange(p, 1)}
+                          className="btn btn-sm"
+                          style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#4ade80', borderRadius: 6, padding: '3px 8px', lineHeight: 1 }}
+                          title="Increase stock"
+                        >
+                          <i className="bi bi-plus" />
+                        </button>
+                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: stockColor(parseInt(p.stock) || 0), marginLeft: 4, minWidth: 32 }}>
+                          {p.stock !== undefined ? p.stock : '—'}
+                        </span>
+                      </div>
+                    </td>
                     <td>
                       <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: p.isActive ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.15)', color: p.isActive ? '#4ade80' : '#94a3b8', border: `1px solid ${p.isActive ? 'rgba(16,185,129,0.3)' : 'rgba(148,163,184,0.2)'}` }}>
                         {p.isActive ? 'Active' : 'Inactive'}
@@ -248,12 +249,8 @@ const ProductManager = () => {
                     </td>
                     <td>
                       <div className="d-flex gap-1">
-                        <button onClick={() => handleEdit(p)} className="btn btn-sm" style={{ background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.3)', color: 'var(--ocean-light)', borderRadius: 6, padding: '4px 10px' }}>
-                          <i className="bi bi-pencil" />
-                        </button>
-                        <button onClick={() => handleDelete(p._id)} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--coral)', borderRadius: 6, padding: '4px 10px' }}>
-                          <i className="bi bi-trash" />
-                        </button>
+                        <button onClick={() => handleEdit(p)} className="btn btn-sm" style={{ background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.3)', color: 'var(--ocean-light)', borderRadius: 6, padding: '4px 10px' }}><i className="bi bi-pencil" /></button>
+                        <button onClick={() => handleDelete(p._id)} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--coral)', borderRadius: 6, padding: '4px 10px' }}><i className="bi bi-trash" /></button>
                       </div>
                     </td>
                   </tr>
