@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://fish-farm-website-backend.onrender.com',
+        target: 'https://fish-farm-website-frontend.onrender.com',
         changeOrigin: true
       }
     }
