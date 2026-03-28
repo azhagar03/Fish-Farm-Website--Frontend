@@ -50,7 +50,7 @@ export const accountingYearAPI = {
 };
 
 export const adminAPI = {
-  login: (data) => API.post('/admin/login', data), // ✅ fixed
+  login: (data) => API.post('/admin', data), // ✅ fixed
   getAll: () => API.get('/admin'),
   create: (data) => API.post('/admin', data),
   delete: (id) => API.delete(`/admin/${id}`)

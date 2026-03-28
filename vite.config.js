@@ -5,11 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    proxy: {
-      '/api': {
-        target: 'https://fish-farm-website-frontend.onrender.com',
-        changeOrigin: true
-      }
-    }
+   proxy: {
+     '/api': {
+    target: 'https://fish-farm-website-backend.onrender.com',
+    changeOrigin: true
+  }
+}
   }
 })
