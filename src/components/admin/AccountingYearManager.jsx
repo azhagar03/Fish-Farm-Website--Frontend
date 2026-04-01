@@ -52,10 +52,15 @@ const AccountingYearManager = () => {
   };
 
   const handleActivate = async (id) => {
-    if (!window.confirm('Switch to this accounting year? Invoice numbers will restart from where this year left off.')) return;
+    const year = years.find(y => y._id === id);
+    const isNewYear = !year || (year.invoiceCounter === 0 || year.invoiceCounter === undefined);
+    const msg = isNewYear
+      ? `Switch to FY ${year?.label}? Invoice numbers will RESTART from 1 for this new year.`
+      : `Switch to FY ${year?.label}? Invoice numbers will continue from #${(year.invoiceCounter || 0) + 1}.`;
+    if (!window.confirm(msg)) return;
     try {
       await accountingYearAPI.activate(id);
-      showToast('Accounting year activated');
+      showToast(`Accounting year ${year?.label} activated — invoices ${isNewYear ? 'start from #1' : `continue from #${(year.invoiceCounter || 0) + 1}`}`);
       load();
     } catch { showToast('Error activating year', 'error'); }
   };
@@ -64,7 +69,7 @@ const AccountingYearManager = () => {
     setCreating(true);
     try {
       await accountingYearAPI.create({ startYear: parseInt(newStartYear), setActive: false });
-      showToast(`Year ${newStartYear}-${parseInt(newStartYear) + 1} created`);
+      showToast(`FY ${newStartYear}-${parseInt(newStartYear) + 1} created — activate it to start invoicing from #1`);
       load();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error creating year', 'error');
@@ -148,6 +153,9 @@ const AccountingYearManager = () => {
           <div style={{ fontSize: '0.7rem', color: 'var(--ocean-light)', marginTop: 3 }}>
             <i className="bi bi-hash me-1" />
             {year.invoiceCounter ?? 0} invoice{year.invoiceCounter !== 1 ? 's' : ''} issued
+            {(!year.invoiceCounter || year.invoiceCounter === 0) && !year.isActive && (
+              <span style={{ color: '#4ade80', marginLeft: 4 }}>(will start from #1)</span>
+            )}
           </div>
         </div>
 
