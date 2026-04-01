@@ -89,7 +89,7 @@ const generateInvoiceHTML = async (invoice) => {
 
   // ── Tamil text blessing shown above banner image ──
   const tamilBlessingHTML = `
-    <div style="text-align:center;font-size:16px;font-weight:900;color:#000;margin-bottom:4px;font-family:'Noto Sans Tamil','Latha','Arial Unicode MS',Arial,sans-serif;letter-spacing:3px;">
+    <div style="text-align:center;font-size:10px;font-weight:900;color:#000;margin-bottom:4px;font-family:'Noto Sans Tamil','Latha','Arial Unicode MS',Arial,sans-serif;letter-spacing:3px;">
       ஸ்ரீ பாண்டி துணை
     </div>`;
 
@@ -658,19 +658,19 @@ export const InvoicePrintView = ({ invoice, printMode = false }) => {
         return (
           <div key={pageIndex} style={{ width: P ? '210mm' : '100%', background: P ? '#fff' : 'transparent', padding: P ? '8mm 10mm 0 10mm' : 0, boxSizing: 'border-box', pageBreakAfter: isLastPage ? 'auto' : 'always', marginBottom: P ? 0 : 24 }}>
             {/* Tamil blessing above banner */}
-            <div style={{ textAlign: 'center', fontSize: P ? 15 : 17, fontWeight: 900, color: P ? '#000' : 'var(--ocean-foam)', marginBottom: 4, fontFamily: "'Noto Sans Tamil','Latha','Arial Unicode MS',Arial,sans-serif", letterSpacing: 3 }}>
+            <div style={{ textAlign: 'center', fontSize: P ? 10 : 10, fontWeight: 900, color: P ? '#000' : 'var(--ocean-foam)', marginBottom: 4, fontFamily: "'Noto Sans Tamil','Latha','Arial Unicode MS',Arial,sans-serif", letterSpacing: 3 }}>
               ஸ்ரீ பாண்டி துணை
             </div>
             {/* Header with 3 real images */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <img src={fishImg1} alt="Fish" style={{ width: P ? 100 : 110, height: P ? 90 : 100, objectFit: 'cover', border: '1px solid #ccc', borderRadius: 4 }} onError={e => { e.target.style.display = 'none'; }} />
+              <img src={fishImg1} alt="Fish" style={{ width: P ? 100 : 110, height: P ? 90 : 100, objectFit: 'contain', border: '1px solid #ccc', borderRadius: 4 }} onError={e => { e.target.style.display = 'none'; }} />
               <div style={{ textAlign: 'center', flex: 1, padding: '0 8px' }}>
-                <img src={bannerImg} alt="Banner" style={{ maxWidth: 280, maxHeight: 80, objectFit: 'contain', display: 'block', margin: '0 auto 4px' }} onError={e => { e.target.style.display = 'none'; }} />
+                <img src={bannerImg} alt="Banner" style={{ maxWidth: 350, maxHeight: 100, objectFit: 'contain', display: 'block', margin: '0 auto 4px' }} onError={e => { e.target.style.display = 'none'; }} />
                 <div style={{ fontWeight: 900, fontSize: P ? '16px' : '19px', letterSpacing: 2, color: P ? '#000' : 'var(--ocean-foam)' }}>MUTHUPANDI FISH FARM</div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: P ? '#333' : 'var(--text-secondary)' }}>6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: P ? '#333' : 'var(--text-secondary)' }}>Contact 9842186330 &nbsp;&nbsp; 9842886330</div>
               </div>
-              <img src={fishImg2} alt="Fish" style={{ width: P ? 100 : 110, height: P ? 90 : 100, objectFit: 'cover', border: '1px solid #ccc', borderRadius: 4 }} onError={e => { e.target.style.display = 'none'; }} />
+              <img src={fishImg2} alt="Fish" style={{ width: P ? 100 : 110, height: P ? 90 : 100, objectFit: 'contain', border: '1px solid #ccc', borderRadius: 4 }} onError={e => { e.target.style.display = 'none'; }} />
             </div>
 
             <div style={{ border: P ? '2px solid #000' : '1px solid var(--glass-border)', borderRadius: P ? 0 : 8, overflow: 'hidden' }}>
