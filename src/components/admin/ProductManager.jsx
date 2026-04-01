@@ -1,10 +1,9 @@
-// src/components/admin/ProductManager.jsx - Full CRUD + Stock Management
+// src/components/admin/ProductManager.jsx - Full CRUD + Stock Management (Price & Category removed)
 import React, { useEffect, useState } from 'react';
 import { productAPI } from '../../services/api';
 
-const CATEGORIES = ['Fish', 'Filter', 'Equipment', 'Feed', 'Medicine', 'Accessories', 'Transport', 'Other'];
 const UNITS = ['Pcs', 'Nos', 'Kg', 'Ltr', 'Round', 'Set', 'Pair'];
-const EMPTY_FORM = { name: '', category: 'Other', description: '', price: '', unit: 'Pcs', stock: '', isActive: true };
+const EMPTY_FORM = { name: '', description: '', unit: 'Pcs', stock: '', isActive: true };
 
 const ProductManager = () => {
   const [products, setProducts] = useState([]);
@@ -14,9 +13,8 @@ const ProductManager = () => {
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterCat, setFilterCat] = useState('');
   const [toast, setToast] = useState(null);
-  const [stockAdjust, setStockAdjust] = useState({}); // { productId: inputValue }
+  const [stockAdjust, setStockAdjust] = useState({});
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -42,11 +40,12 @@ const ProductManager = () => {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = { ...form, price: 0, category: 'Other' };
       if (editId) {
-        await productAPI.update(editId, form);
+        await productAPI.update(editId, payload);
         showToast('Product updated successfully!');
       } else {
-        await productAPI.create(form);
+        await productAPI.create(payload);
         showToast('Product created successfully!');
       }
       setShowForm(false);
@@ -61,7 +60,7 @@ const ProductManager = () => {
   };
 
   const handleEdit = (p) => {
-    setForm({ name: p.name, category: p.category, description: p.description || '', price: p.price, unit: p.unit, stock: p.stock, isActive: p.isActive });
+    setForm({ name: p.name, description: p.description || '', unit: p.unit, stock: p.stock, isActive: p.isActive });
     setEditId(p._id);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -89,7 +88,6 @@ const ProductManager = () => {
     }
   };
 
-  // Stock adjustment: increase or decrease by given amount
   const handleStockChange = async (product, delta) => {
     const adjust = parseInt(stockAdjust[product._id] || 1);
     if (!adjust || adjust <= 0) { showToast('Enter a valid adjustment quantity', 'error'); return; }
@@ -103,13 +101,10 @@ const ProductManager = () => {
     }
   };
 
-  const filtered = products.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    const matchCat = !filterCat || p.category === filterCat;
-    return matchSearch && matchCat;
-  });
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const catColor = cat => ({ Fish: '#06b6d4', Filter: '#8b5cf6', Equipment: '#f59e0b', Feed: '#10b981', Medicine: '#ef4444', Accessories: '#ec4899', Transport: '#6366f1', Other: '#94a3b8' }[cat] || '#94a3b8');
   const stockColor = s => s > 10 ? 'var(--green-sea)' : s > 0 ? '#fbbf24' : '#ef4444';
 
   return (
@@ -143,11 +138,9 @@ const ProductManager = () => {
           </div>
           <form onSubmit={handleSubmit}>
             <div className="row g-3">
-              <div className="col-md-6"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Product Name *</label><input name="name" className="form-control input-ocean" value={form.name} onChange={handleChange} required placeholder="e.g. RS188A TOPFILTER" /></div>
-              <div className="col-md-3"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Category</label><select name="category" className="form-select input-ocean" value={form.category} onChange={handleChange}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-              <div className="col-md-3"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Unit</label><select name="unit" className="form-select input-ocean" value={form.unit} onChange={handleChange}>{UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
-              <div className="col-md-4"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Price (₹) *</label><input name="price" type="number" step="0.01" min="0" className="form-control input-ocean" value={form.price} onChange={handleChange} required placeholder="0.00" /></div>
-              <div className="col-md-4"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Stock Quantity</label><input name="stock" type="number" min="0" className="form-control input-ocean" value={form.stock} onChange={handleChange} placeholder="0" /></div>
+              <div className="col-md-8"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Product Name *</label><input name="name" className="form-control input-ocean" value={form.name} onChange={handleChange} required placeholder="e.g. Rohu Fish" /></div>
+              <div className="col-md-4"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Unit</label><select name="unit" className="form-select input-ocean" value={form.unit} onChange={handleChange}>{UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+              <div className="col-md-4"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Stock Quantity</label><input name="stock" className="form-control input-ocean" value={form.stock} onChange={handleChange} placeholder="0" /></div>
               <div className="col-md-4 d-flex align-items-end">
                 <div className="form-check form-switch"><input className="form-check-input" type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} id="activeSwitch" style={{ width: '3em', height: '1.5em' }} /><label className="form-check-label ms-2" htmlFor="activeSwitch" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active</label></div>
               </div>
@@ -163,14 +156,13 @@ const ProductManager = () => {
 
       <div className="glass-card p-3 mb-3">
         <div className="row g-2 align-items-center">
-          <div className="col-sm-6">
+          <div className="col-sm-8">
             <div className="input-group" style={{ background: 'var(--glass)', borderRadius: 8, border: '1px solid var(--glass-border)' }}>
               <span className="input-group-text" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)' }}><i className="bi bi-search" /></span>
               <input className="form-control input-ocean" style={{ border: 'none' }} placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
-          <div className="col-sm-4"><select className="form-select input-ocean" value={filterCat} onChange={e => setFilterCat(e.target.value)}><option value="">All Categories</option>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-          <div className="col-sm-2 text-end"><small style={{ color: 'var(--text-secondary)' }}>{filtered.length} results</small></div>
+          <div className="col-sm-4 text-end"><small style={{ color: 'var(--text-secondary)' }}>{filtered.length} results</small></div>
         </div>
       </div>
 
@@ -184,8 +176,6 @@ const ProductManager = () => {
                 <tr>
                   <th>#</th>
                   <th>Product Name</th>
-                  <th>Category</th>
-                  <th>Price</th>
                   <th>Unit</th>
                   <th style={{ minWidth: 200 }}>Stock Management</th>
                   <th>Status</th>
@@ -194,7 +184,7 @@ const ProductManager = () => {
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan="8" className="text-center py-4" style={{ color: 'var(--text-secondary)' }}>No products found</td></tr>
+                  <tr><td colSpan="6" className="text-center py-4" style={{ color: 'var(--text-secondary)' }}>No products found</td></tr>
                 ) : filtered.map((p, i) => (
                   <tr key={p._id}>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{i + 1}</td>
@@ -206,13 +196,8 @@ const ProductManager = () => {
                         </span>
                       )}
                     </td>
-                    <td>
-                      <span style={{ background: `${catColor(p.category)}22`, color: catColor(p.category), border: `1px solid ${catColor(p.category)}44`, padding: '2px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600 }}>{p.category}</span>
-                    </td>
-                    <td style={{ color: 'var(--gold-light)', fontWeight: 700 }}>₹{Number(p.price).toLocaleString('en-IN')}</td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{p.unit}</td>
                     <td>
-                      {/* Stock adjust controls */}
                       <div className="d-flex align-items-center gap-1">
                         <button
                           onClick={() => handleStockChange(p, -1)}
@@ -223,8 +208,6 @@ const ProductManager = () => {
                           <i className="bi bi-dash" />
                         </button>
                         <input
-                          type="number"
-                          min="1"
                           value={stockAdjust[p._id] !== undefined ? stockAdjust[p._id] : 1}
                           onChange={e => setStockAdjust(prev => ({ ...prev, [p._id]: e.target.value }))}
                           style={{ width: 52, background: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--ocean-foam)', padding: '3px 6px', fontSize: '0.82rem', textAlign: 'center' }}

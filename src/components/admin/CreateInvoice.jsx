@@ -2,14 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invoiceAPI, productAPI, customerAPI } from '../../services/api';
 
-// Import local assets directly - this makes them bundled by Vite
 import fishImg1 from '../../assets/fishImg1.jpg';
 import fishImg2 from '../../assets/fishImg2.jpg';
 import bannerImg from '../../assets/BannerImg.jpeg';
 import qrCodeImg from '../../assets/QR code image.jpeg';
 
 const UNITS = ['Pcs', 'Nos', 'Kg', 'Ltr', 'Round', 'Set', 'Pair'];
-const emptyItem = () => ({ _tempId: Date.now() + Math.random(), description: '', quantity: 1, pack: 'Pcs', rate: 0, discount: 0, amount: 0 });
+const emptyItem = () => ({ _tempId: Date.now() + Math.random(), description: '', quantity: '', pack: 'Pcs', rate: '', discount: 0, amount: 0 });
 
 const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
   'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
@@ -34,6 +33,7 @@ function amountInWords(amount) {
   return w + ' Only';
 }
 
+// Amount calculated from rate entered in invoice - NOT from product price
 const calcItem = (item) => {
   const qty = parseFloat(item.quantity) || 0;
   const rate = parseFloat(item.rate) || 0;
@@ -49,7 +49,11 @@ const splitItemsIntoPages = (items) => {
   return pages;
 };
 
-/* ── Convert image to base64 for embedding in print HTML ── */
+// Check if a row is "complete" enough to trigger auto-add
+const isRowComplete = (item) => {
+  return item.description.trim() !== '' && item.rate !== '' && parseFloat(item.rate) > 0;
+};
+
 const imageToBase64 = (url) => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -67,9 +71,7 @@ const imageToBase64 = (url) => {
   });
 };
 
-/* ── Generate invoice HTML for print/PDF with embedded images ── */
 const generateInvoiceHTML = async (invoice) => {
-  // Convert images to base64 so they work in print windows
   const [fish1B64, fish2B64, bannerB64, qrB64] = await Promise.all([
     imageToBase64(fishImg1),
     imageToBase64(fishImg2),
@@ -96,9 +98,9 @@ const generateInvoiceHTML = async (invoice) => {
       <tr>
         <td style="border:1px solid #000;padding:5px 6px;font-size:11px;text-align:center;">${item.slNo || ''}</td>
         <td style="border:1px solid #000;padding:5px 6px;font-size:11px;">${item.description}</td>
+        <td style="border:1px solid #000;padding:5px 6px;font-size:11px;text-align:right;">${Number(item.rate).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:5px 6px;font-size:11px;text-align:right;">${item.quantity}</td>
         <td style="border:1px solid #000;padding:5px 6px;font-size:11px;text-align:center;">${item.pack}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:11px;text-align:right;">${Number(item.rate).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:5px 6px;font-size:11px;text-align:right;">${Number(item.discount || 0).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:5px 6px;font-size:11px;text-align:right;font-weight:bold;">${Number(item.amount).toFixed(2)}</td>
       </tr>
@@ -108,16 +110,17 @@ const generateInvoiceHTML = async (invoice) => {
       <tr>${Array(7).fill(null).map(() => `<td style="border:1px solid #000;padding:5px 6px;font-size:11px;">&nbsp;</td>`).join('')}</tr>
     `).join('');
 
+    // Increased font sizes for header/images in PDF
     const headerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        ${fish1B64 ? `<img src="${fish1B64}" alt="Fish" style="width:75px;height:65px;object-fit:cover;border:1px solid #ccc;border-radius:4px;" />` : '<div style="width:75px;height:65px;background:#eee;border-radius:4px;"></div>'}
+        ${fish1B64 ? `<img src="${fish1B64}" alt="Fish" style="width:95px;height:80px;object-fit:cover;border:1px solid #ccc;border-radius:4px;" />` : '<div style="width:95px;height:80px;background:#eee;border-radius:4px;"></div>'}
         <div style="text-align:center;flex:1;padding:0 10px;">
-          ${bannerB64 ? `<img src="${bannerB64}" alt="Banner" style="max-width:220px;max-height:60px;object-fit:contain;display:block;margin:0 auto 4px;" />` : ''}
-          <div style="font-weight:900;font-size:16px;letter-spacing:2px;">MUTHUPANDI FISH FARM</div>
-          <div style="font-size:10px;color:#555;">6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
-          <div style="font-size:10px;color:#555;">Contact 9842186330 &nbsp;&nbsp; 9842886330</div>
+          ${bannerB64 ? `<img src="${bannerB64}" alt="Banner" style="max-width:280px;max-height:75px;object-fit:contain;display:block;margin:0 auto 6px;" />` : ''}
+          <div style="font-weight:900;font-size:20px;letter-spacing:2px;">MUTHUPANDI FISH FARM</div>
+          <div style="font-size:12px;color:#555;">6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
+          <div style="font-size:12px;color:#555;">Contact 9842186330 &nbsp;&nbsp; 9842886330</div>
         </div>
-        ${fish2B64 ? `<img src="${fish2B64}" alt="Fish" style="width:75px;height:65px;object-fit:cover;border:1px solid #ccc;border-radius:4px;" />` : '<div style="width:75px;height:65px;background:#eee;border-radius:4px;"></div>'}
+        ${fish2B64 ? `<img src="${fish2B64}" alt="Fish" style="width:95px;height:80px;object-fit:cover;border:1px solid #ccc;border-radius:4px;" />` : '<div style="width:95px;height:80px;background:#eee;border-radius:4px;"></div>'}
       </div>`;
 
     const footerSection = isLastPage ? `
@@ -170,19 +173,19 @@ const generateInvoiceHTML = async (invoice) => {
       <div style="width:210mm;min-height:297mm;background:#fff;font-family:Arial,sans-serif;color:#000;padding:10mm;box-sizing:border-box;page-break-after:${isLastPage ? 'auto' : 'always'};">
         ${headerHTML}
         <div style="border:2px solid #000;">
-          <div style="text-align:center;padding:4px;border-bottom:2px solid #000;font-weight:900;font-size:14px;letter-spacing:6px;background:#f0f0f0;">INVOICE</div>
+          <div style="text-align:center;padding:5px;border-bottom:2px solid #000;font-weight:900;font-size:16px;letter-spacing:6px;background:#f0f0f0;">INVOICE</div>
           <div style="display:flex;border-bottom:1px solid #000;">
             <div style="flex:1;padding:10px 12px;border-right:1px solid #000;">
               <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:4px;">BUYER and Address</div>
-              <div style="font-weight:bold;font-size:12px;">${invoice.buyerName}</div>
+              <div style="font-weight:bold;font-size:13px;">${invoice.buyerName}</div>
               ${invoice.buyerCity ? `<div style="font-size:11px;color:#555;">${invoice.buyerCity}</div>` : ''}
               ${invoice.buyerAddress && invoice.buyerAddress !== invoice.buyerCity ? `<div style="font-size:11px;color:#555;">${invoice.buyerAddress}</div>` : ''}
               ${invoice.buyerPhone ? `<div style="font-size:11px;color:#555;">📞 ${invoice.buyerPhone}</div>` : ''}
             </div>
             <div style="padding:10px 12px;min-width:220px;">
+              <div style="font-size:13px;font-weight:900;color:#000;margin-bottom:6px;padding:4px 0;border-bottom:2px solid #000;">INVOICE NO: ${invoice.invoiceNo}</div>
               ${[
                 ['INVOICE DATE', new Date(invoice.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })],
-                ['INVOICE NO', invoice.invoiceNo],
                 ['STATE', invoice.state || 'Tamil Nadu'],
                 ['STATE CODE', invoice.stateCode || '33'],
                 ['GSTIN', invoice.gstin || '33ARIPM4129M1ZK'],
@@ -199,9 +202,9 @@ const generateInvoiceHTML = async (invoice) => {
               <tr style="background:#f0f0f0;">
                 <th style="border:1px solid #000;padding:6px;font-size:11px;text-align:center;width:40px;">Sl.No</th>
                 <th style="border:1px solid #000;padding:6px;font-size:11px;text-align:left;">Description of Goods</th>
-                <th style="border:1px solid #000;padding:6px;font-size:11px;text-align:right;width:60px;">Quantity</th>
-                <th style="border:1px solid #000;padding:6px;font-size:11px;text-align:center;width:60px;">Pack</th>
                 <th style="border:1px solid #000;padding:6px;font-size:11px;text-align:right;width:70px;">Rate</th>
+                <th style="border:1px solid #000;padding:6px;font-size:11px;text-align:right;width:60px;">Quantity</th>
+                <th style="border:1px solid #000;padding:6px;font-size:11px;text-align:center;width:55px;">Pack</th>
                 <th style="border:1px solid #000;padding:6px;font-size:11px;text-align:right;width:60px;">Disc</th>
                 <th style="border:1px solid #000;padding:6px;font-size:11px;text-align:right;width:80px;">Amount</th>
               </tr>
@@ -232,7 +235,6 @@ const generateInvoiceHTML = async (invoice) => {
 </html>`;
 };
 
-/* ── Send via WhatsApp — generate PDF blob and share ── */
 const handleWhatsAppPDF = async (invoice) => {
   try {
     const htmlContent = await generateInvoiceHTML(invoice);
@@ -240,7 +242,6 @@ const handleWhatsAppPDF = async (invoice) => {
     if (!printWindow) { alert('Please allow popups to send invoice via WhatsApp'); return; }
     printWindow.document.write(htmlContent);
     printWindow.document.close();
-    // Give images time to load, then print (save as PDF)
     setTimeout(() => {
       printWindow.focus();
       printWindow.print();
@@ -274,15 +275,16 @@ const CreateInvoice = ({ onSaved, editData }) => {
   const [toast, setToast] = useState(null);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDrop, setShowCustomerDrop] = useState(false);
+  const [invoiceNo, setInvoiceNo] = useState(null);
 
   const [header, setHeader] = useState({
     buyerName: '', buyerAddress: '', buyerPhone: '', buyerCity: '',
     customerId: '',
     state: 'Tamil Nadu', stateCode: '33', gstin: '33ARIPM4129M1ZK',
     invoiceDate: new Date().toISOString().split('T')[0],
-    paymentStatus: 'Pending', paidAmount: 0,
+    paymentStatus: 'Pending', paidAmount: '',
     cgstPercent: 0, sgstPercent: 0,
-    transport: 0, notes: ''
+    transport: '', notes: ''
   });
   const [items, setItems] = useState([emptyItem()]);
 
@@ -294,6 +296,11 @@ const CreateInvoice = ({ onSaved, editData }) => {
   useEffect(() => {
     productAPI.getAll({ isActive: true }).then(res => setProducts(res.data.data || [])).catch(() => {});
     customerAPI.getAll().then(res => setCustomers(res.data.data || [])).catch(() => {});
+    // Fetch next invoice number
+    invoiceAPI.getNextNumber && invoiceAPI.getNextNumber().then(res => {
+      setInvoiceNo(res.data?.data?.nextNumber || res.data?.nextNumber || null);
+    }).catch(() => {});
+
     if (editData) {
       setHeader({
         buyerName: editData.buyerName || '', buyerAddress: editData.buyerAddress || '',
@@ -303,11 +310,12 @@ const CreateInvoice = ({ onSaved, editData }) => {
         gstin: editData.gstin || '33ARIPM4129M1ZK',
         invoiceDate: editData.invoiceDate?.split('T')[0] || new Date().toISOString().split('T')[0],
         paymentStatus: editData.paymentStatus || 'Pending',
-        paidAmount: editData.paidAmount || 0,
+        paidAmount: editData.paidAmount || '',
         cgstPercent: editData.cgstPercent || 0, sgstPercent: editData.sgstPercent || 0,
-        transport: editData.transport || 0, notes: editData.notes || ''
+        transport: editData.transport || '', notes: editData.notes || ''
       });
       setItems(editData.items?.map(i => ({ ...i, _tempId: Math.random() })) || [emptyItem()]);
+      setInvoiceNo(editData.invoiceNo);
     }
   }, [editData]);
 
@@ -322,21 +330,33 @@ const CreateInvoice = ({ onSaved, editData }) => {
   const paidAmt = parseFloat(header.paidAmount || 0);
   const balanceAmt = parseFloat((netAmount - paidAmt).toFixed(2));
 
+  // Update item and auto-add new row when current row is complete
   const updateItem = (tempId, field, value) => {
-    setItems(prev => prev.map(item => {
-      if (item._tempId !== tempId) return item;
-      const updated = { ...item, [field]: value };
-      updated.amount = calcItem(updated);
+    setItems(prev => {
+      const updated = prev.map(item => {
+        if (item._tempId !== tempId) return item;
+        const newItem = { ...item, [field]: value };
+        newItem.amount = calcItem(newItem);
+        return newItem;
+      });
+
+      // Auto-add new row only when the LAST row becomes complete
+      const lastItem = updated[updated.length - 1];
+      if (lastItem._tempId === tempId && isRowComplete(lastItem)) {
+        return [...updated, emptyItem()];
+      }
       return updated;
-    }));
+    });
   };
 
+  // When product is selected: fill description and pack only (NOT rate - rate is entered manually)
   const selectProduct = (tempId, name) => {
     const prod = products.find(p => p.name === name);
     if (!prod) return;
     setItems(prev => prev.map(item => {
       if (item._tempId !== tempId) return item;
-      const updated = { ...item, description: name, rate: prod.price, pack: prod.unit };
+      // Only fill description and pack - rate stays as entered by user
+      const updated = { ...item, description: name, pack: prod.unit || item.pack };
       updated.amount = calcItem(updated);
       return updated;
     }));
@@ -352,7 +372,6 @@ const CreateInvoice = ({ onSaved, editData }) => {
     c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.mobile.includes(customerSearch)
   );
 
-  const addItem = () => setItems(prev => [...prev, emptyItem()]);
   const removeItem = (tempId) => {
     if (items.length === 1) return showToast('At least one item required', 'error');
     setItems(prev => prev.filter(i => i._tempId !== tempId));
@@ -361,7 +380,8 @@ const CreateInvoice = ({ onSaved, editData }) => {
 
   const handleSave = async () => {
     if (!header.buyerName.trim()) return showToast('Buyer name is required', 'error');
-    if (items.some(i => !i.description.trim())) return showToast('All items must have a description', 'error');
+    const filledItems = items.filter(i => i.description.trim());
+    if (filledItems.length === 0) return showToast('At least one item with description is required', 'error');
     setSaving(true);
     try {
       const payload = {
@@ -370,7 +390,7 @@ const CreateInvoice = ({ onSaved, editData }) => {
         sgstPercent: parseFloat(header.sgstPercent) || 0,
         transport: parseFloat(header.transport) || 0,
         paidAmount: parseFloat(header.paidAmount) || 0,
-        items: items.map((item, idx) => ({
+        items: filledItems.map((item, idx) => ({
           slNo: idx + 1, description: item.description,
           quantity: parseFloat(item.quantity) || 0, pack: item.pack,
           rate: parseFloat(item.rate) || 0, discount: parseFloat(item.discount) || 0,
@@ -379,7 +399,6 @@ const CreateInvoice = ({ onSaved, editData }) => {
       };
       const res = editData ? await invoiceAPI.update(editData._id, payload) : await invoiceAPI.create(payload);
 
-      // ── Deduct stock for each billed item ──
       for (const item of payload.items) {
         const prod = products.find(p => p.name === item.description);
         if (prod && prod._id && prod.stock !== undefined) {
@@ -402,9 +421,10 @@ const CreateInvoice = ({ onSaved, editData }) => {
 
   const handleNew = () => {
     setSaved(false); setSavedInvoice(null);
-    setHeader({ buyerName: '', buyerAddress: '', buyerPhone: '', buyerCity: '', customerId: '', state: 'Tamil Nadu', stateCode: '33', gstin: '33ARIPM4129M1ZK', invoiceDate: new Date().toISOString().split('T')[0], paymentStatus: 'Pending', paidAmount: 0, cgstPercent: 0, sgstPercent: 0, transport: 0, notes: '' });
+    setHeader({ buyerName: '', buyerAddress: '', buyerPhone: '', buyerCity: '', customerId: '', state: 'Tamil Nadu', stateCode: '33', gstin: '33ARIPM4129M1ZK', invoiceDate: new Date().toISOString().split('T')[0], paymentStatus: 'Pending', paidAmount: '', cgstPercent: 0, sgstPercent: 0, transport: '', notes: '' });
     setItems([emptyItem()]);
     setCustomerSearch('');
+    setInvoiceNo(null);
   };
 
   if (saved && savedInvoice) {
@@ -414,14 +434,24 @@ const CreateInvoice = ({ onSaved, editData }) => {
   return (
     <div>
       {toast && <Toast toast={toast} />}
+
+      {/* Invoice Number Badge at top */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
           <h5 style={{ margin: 0, fontFamily: 'var(--font-accent)', color: 'var(--ocean-foam)' }}>{editData ? 'Edit Invoice' : 'Create New Invoice'}</h5>
           <small style={{ color: 'var(--text-secondary)' }}>Auto invoice number • GST calculation • Stock auto-deduction</small>
         </div>
-        <button className="btn-ocean btn" onClick={handleSave} disabled={saving}>
-          {saving ? <><span className="spinner-border spinner-border-sm me-2" />Saving...</> : <><i className="bi bi-floppy me-2" />Save Invoice</>}
-        </button>
+        <div className="d-flex align-items-center gap-3">
+          {invoiceNo && (
+            <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 10, padding: '8px 18px', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.7rem', color: '#fbbf24', fontWeight: 600, letterSpacing: 1 }}>INVOICE NO</div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>#{invoiceNo}</div>
+            </div>
+          )}
+          <button className="btn-ocean btn" onClick={handleSave} disabled={saving}>
+            {saving ? <><span className="spinner-border spinner-border-sm me-2" />Saving...</> : <><i className="bi bi-floppy me-2" />Save Invoice</>}
+          </button>
+        </div>
       </div>
 
       <div className="glass-card p-4 mb-4">
@@ -446,7 +476,7 @@ const CreateInvoice = ({ onSaved, editData }) => {
                 ))}
               </div>
             )}
-                        {header.customerId && customers.find(c => c._id === header.customerId)?.balanceAmount > 0 && (
+            {header.customerId && customers.find(c => c._id === header.customerId)?.balanceAmount > 0 && (
               <div style={{ marginTop: 4, fontSize: '0.75rem', color: '#fca5a5' }}>
                 <i className="bi bi-exclamation-circle me-1" />
                 Pending: ₹{customers.find(c => c._id === header.customerId)?.balanceAmount.toLocaleString('en-IN')}
@@ -457,7 +487,7 @@ const CreateInvoice = ({ onSaved, editData }) => {
           <div className="col-md-2"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>City</label><input name="buyerCity" className="form-control input-ocean" value={header.buyerCity} onChange={handleHeaderChange} placeholder="City" /></div>
           <div className="col-md-2"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Invoice Date</label><input name="invoiceDate" type="date" className="form-control input-ocean" value={header.invoiceDate} onChange={handleHeaderChange} /></div>
           <div className="col-md-2"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Payment Status</label><select name="paymentStatus" className="form-select input-ocean" value={header.paymentStatus} onChange={handleHeaderChange}><option>Pending</option><option>Paid</option><option>Partial</option></select></div>
-          <div className="col-md-2"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Paid Amount (₹)</label><input name="paidAmount" type="number" min="0" className="form-control input-ocean" value={header.paidAmount} onChange={handleHeaderChange} /></div>
+          <div className="col-md-2"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Paid Amount (₹)</label><input name="paidAmount" className="form-control input-ocean" value={header.paidAmount} onChange={handleHeaderChange} placeholder="0" /></div>
           <div className="col-md-2"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>State</label><input name="state" className="form-control input-ocean" value={header.state} onChange={handleHeaderChange} /></div>
           <div className="col-md-1"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>State Code</label><input name="stateCode" className="form-control input-ocean" value={header.stateCode} onChange={handleHeaderChange} /></div>
           <div className="col-md-3"><label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Address</label><input name="buyerAddress" className="form-control input-ocean" value={header.buyerAddress} onChange={handleHeaderChange} placeholder="Address" /></div>
@@ -467,9 +497,7 @@ const CreateInvoice = ({ onSaved, editData }) => {
       <div className="glass-card p-4 mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h6 style={{ color: 'var(--ocean-glow)', fontFamily: 'var(--font-accent)', margin: 0 }}><i className="bi bi-table me-2" />Invoice Items</h6>
-          <button className="btn btn-sm" onClick={addItem} style={{ background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.3)', color: 'var(--ocean-light)' }}>
-            <i className="bi bi-plus-lg me-1" />Add Row
-          </button>
+          <small style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}><i className="bi bi-info-circle me-1" />New row added automatically when Rate is filled</small>
         </div>
         <div className="table-responsive">
           <table className="table table-ocean mb-0">
@@ -477,9 +505,9 @@ const CreateInvoice = ({ onSaved, editData }) => {
               <tr>
                 <th style={{ width: 40 }}>#</th>
                 <th style={{ minWidth: 200 }}>Description</th>
-                <th style={{ width: 80 }}>Qty</th>
+                <th style={{ width: 110 }}>Rate (₹)</th>
+                <th style={{ width: 90 }}>Qty</th>
                 <th style={{ width: 85 }}>Pack</th>
-                <th style={{ width: 100 }}>Rate (₹)</th>
                 <th style={{ width: 90 }}>Disc (₹)</th>
                 <th style={{ width: 110 }}>Amount (₹)</th>
                 <th style={{ width: 40 }}></th>
@@ -506,12 +534,54 @@ const CreateInvoice = ({ onSaved, editData }) => {
                         </div>
                       )}
                     </td>
-                    <td><input type="number" min="0.1" step="0.1" className="form-control input-ocean" value={item.quantity} onChange={e => updateItem(item._tempId, 'quantity', e.target.value)} style={{ fontSize: '0.85rem' }} /></td>
-                    <td><select className="form-select input-ocean" value={item.pack} onChange={e => updateItem(item._tempId, 'pack', e.target.value)} style={{ fontSize: '0.85rem' }}>{UNITS.map(u => <option key={u}>{u}</option>)}</select></td>
-                    <td><input type="number" min="0" step="0.01" className="form-control input-ocean" value={item.rate} onChange={e => updateItem(item._tempId, 'rate', e.target.value)} style={{ fontSize: '0.85rem' }} /></td>
-                    <td><input type="number" min="0" step="0.01" className="form-control input-ocean" value={item.discount} onChange={e => updateItem(item._tempId, 'discount', e.target.value)} style={{ fontSize: '0.85rem' }} /></td>
-                    <td><div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px', fontWeight: 700, color: 'var(--gold-light)', textAlign: 'right', fontSize: '0.9rem', minHeight: 38, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>{calcItem(item).toFixed(2)}</div></td>
-                    <td><button onClick={() => removeItem(item._tempId)} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--coral)', borderRadius: 6, padding: '6px 10px' }}><i className="bi bi-trash" /></button></td>
+                    {/* Rate FIRST */}
+                    <td>
+                      <input
+                        className="form-control input-ocean"
+                        value={item.rate}
+                        onChange={e => updateItem(item._tempId, 'rate', e.target.value)}
+                        placeholder="0.00"
+                        style={{ fontSize: '0.85rem' }}
+                        inputMode="decimal"
+                      />
+                    </td>
+                    {/* Qty SECOND */}
+                    <td>
+                      <input
+                        className="form-control input-ocean"
+                        value={item.quantity}
+                        onChange={e => updateItem(item._tempId, 'quantity', e.target.value)}
+                        placeholder="0"
+                        style={{ fontSize: '0.85rem' }}
+                        inputMode="decimal"
+                      />
+                    </td>
+                    {/* Pack auto-filled from product */}
+                    <td>
+                      <select className="form-select input-ocean" value={item.pack} onChange={e => updateItem(item._tempId, 'pack', e.target.value)} style={{ fontSize: '0.85rem' }}>
+                        {UNITS.map(u => <option key={u}>{u}</option>)}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        className="form-control input-ocean"
+                        value={item.discount}
+                        onChange={e => updateItem(item._tempId, 'discount', e.target.value)}
+                        placeholder="0"
+                        style={{ fontSize: '0.85rem' }}
+                        inputMode="decimal"
+                      />
+                    </td>
+                    <td>
+                      <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px', fontWeight: 700, color: 'var(--gold-light)', textAlign: 'right', fontSize: '0.9rem', minHeight: 38, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                        {calcItem(item).toFixed(2)}
+                      </div>
+                    </td>
+                    <td>
+                      <button onClick={() => removeItem(item._tempId)} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--coral)', borderRadius: 6, padding: '6px 10px' }}>
+                        <i className="bi bi-trash" />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -522,11 +592,11 @@ const CreateInvoice = ({ onSaved, editData }) => {
         <div className="row justify-content-end mt-4">
           <div className="col-md-5">
             <div className="glass-card p-3 mb-3" style={{ background: 'rgba(4,31,59,0.5)' }}>
-              <h6 style={{ color: 'var(--ocean-glow)', fontSize: '0.85rem', marginBottom: 12 }}><i className="bi bi-percent me-2" />GST Settings</h6>
+              <h6 style={{ color: 'var(--ocean-glow)', fontSize: '0.85rem', marginBottom: 12 }}><i className="bi bi-percent me-2" />GST & Charges</h6>
               <div className="row g-2">
-                <div className="col-6"><label style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>CGST %</label><input type="number" name="cgstPercent" min="0" max="100" step="0.01" className="form-control input-ocean form-control-sm" value={header.cgstPercent} onChange={handleHeaderChange} /></div>
-                <div className="col-6"><label style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>SGST %</label><input type="number" name="sgstPercent" min="0" max="100" step="0.01" className="form-control input-ocean form-control-sm" value={header.sgstPercent} onChange={handleHeaderChange} /></div>
-                <div className="col-6"><label style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>Transport (₹)</label><input type="number" name="transport" min="0" className="form-control input-ocean form-control-sm" value={header.transport} onChange={handleHeaderChange} /></div>
+                <div className="col-6"><label style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>CGST %</label><input name="cgstPercent" className="form-control input-ocean form-control-sm" value={header.cgstPercent} onChange={handleHeaderChange} inputMode="decimal" /></div>
+                <div className="col-6"><label style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>SGST %</label><input name="sgstPercent" className="form-control input-ocean form-control-sm" value={header.sgstPercent} onChange={handleHeaderChange} inputMode="decimal" /></div>
+                <div className="col-6"><label style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>Transport (₹)</label><input name="transport" className="form-control input-ocean form-control-sm" value={header.transport} onChange={handleHeaderChange} placeholder="0" inputMode="decimal" /></div>
               </div>
             </div>
             <div style={{ background: 'rgba(4,31,59,0.6)', border: '1px solid var(--glass-border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -570,8 +640,8 @@ const CreateInvoice = ({ onSaved, editData }) => {
 
 const Toast = ({ toast }) => (
   <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, background: toast.type === 'error' ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)', color: 'white', padding: '12px 20px', borderRadius: 10, fontWeight: 600, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
-    <i className={`bi ${toast.type === 'error' ? 'bi-x-circle' : 'bi-check-circle'} me-2`} />{toast.msg}
-  </div>
+  <i className={`bi ${toast.type === 'error' ? 'bi-x-circle' : 'bi-check-circle'} me-2`} />{toast.msg}
+</div>
 );
 
 const SavedInvoiceView = ({ invoice, onNew, onBack, toast }) => {
@@ -590,8 +660,8 @@ const SavedInvoiceView = ({ invoice, onNew, onBack, toast }) => {
       ['INVOICE'],
       ['Invoice No', invoice.invoiceNo, 'Date', new Date(invoice.invoiceDate).toLocaleDateString('en-IN')],
       ['Buyer', invoice.buyerName, 'Phone', invoice.buyerPhone || ''],
-      [], ['Sl.No', 'Description', 'Quantity', 'Pack', 'Rate', 'Discount', 'Amount'],
-      ...invoice.items.map(i => [i.slNo, i.description, i.quantity, i.pack, i.rate, i.discount || 0, i.amount]),
+      [], ['Sl.No', 'Description', 'Rate', 'Quantity', 'Pack', 'Discount', 'Amount'],
+      ...invoice.items.map(i => [i.slNo, i.description, i.rate, i.quantity, i.pack, i.discount || 0, i.amount]),
       [], ['', '', '', '', '', 'Net Amount', invoice.netAmount],
     ].filter(Boolean);
     const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
@@ -622,7 +692,6 @@ const SavedInvoiceView = ({ invoice, onNew, onBack, toast }) => {
   );
 };
 
-/* ══ InvoicePrintView — React screen preview with correct imported images ══ */
 export const InvoicePrintView = ({ invoice, printMode = false }) => {
   const P = printMode;
   const pages = splitItemsIntoPages(invoice.items || []);
@@ -642,32 +711,35 @@ export const InvoicePrintView = ({ invoice, printMode = false }) => {
         const emptyRowsCount = Math.max(0, ITEMS_PER_PAGE - pageItems.length);
         return (
           <div key={pageIndex} style={{ width: P ? '210mm' : '100%', minHeight: P ? '297mm' : 'auto', background: P ? '#fff' : 'transparent', padding: P ? '10mm' : 0, boxSizing: 'border-box', pageBreakAfter: isLastPage ? 'auto' : 'always', marginBottom: P ? 0 : 24 }}>
-            {/* Header with 3 real images */}
+            {/* Header with bigger images */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <img src={fishImg1} alt="Fish" style={{ width: P ? 70 : 80, height: P ? 60 : 70, objectFit: 'cover', border: '1px solid #ccc', borderRadius: 4 }} onError={e => { e.target.style.display = 'none'; }} />
+              <img src={fishImg1} alt="Fish" style={{ width: P ? 90 : 95, height: P ? 75 : 80, objectFit: 'cover', border: '1px solid #ccc', borderRadius: 4 }} onError={e => { e.target.style.display = 'none'; }} />
               <div style={{ textAlign: 'center', flex: 1, padding: '0 8px' }}>
-                <img src={bannerImg} alt="Banner" style={{ maxWidth: 220, maxHeight: 60, objectFit: 'contain', display: 'block', margin: '0 auto 4px' }} onError={e => { e.target.style.display = 'none'; }} />
-                <div style={{ fontWeight: 900, fontSize: P ? '15px' : '18px', letterSpacing: 2, color: P ? '#000' : 'var(--ocean-foam)' }}>MUTHUPANDI FISH FARM</div>
-                <div style={{ fontSize: 10, color: P ? '#555' : 'var(--text-secondary)' }}>6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
-                <div style={{ fontSize: 10, color: P ? '#555' : 'var(--text-secondary)' }}>Contact 9842186330 &nbsp;&nbsp; 9842886330</div>
+                <img src={bannerImg} alt="Banner" style={{ maxWidth: 280, maxHeight: 75, objectFit: 'contain', display: 'block', margin: '0 auto 6px' }} onError={e => { e.target.style.display = 'none'; }} />
+                <div style={{ fontWeight: 900, fontSize: P ? '18px' : '20px', letterSpacing: 2, color: P ? '#000' : 'var(--ocean-foam)' }}>MUTHUPANDI FISH FARM</div>
+                <div style={{ fontSize: 12, color: P ? '#555' : 'var(--text-secondary)' }}>6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
+                <div style={{ fontSize: 12, color: P ? '#555' : 'var(--text-secondary)' }}>Contact 9842186330 &nbsp;&nbsp; 9842886330</div>
               </div>
-              <img src={fishImg2} alt="Fish" style={{ width: P ? 70 : 80, height: P ? 60 : 70, objectFit: 'cover', border: '1px solid #ccc', borderRadius: 4 }} onError={e => { e.target.style.display = 'none'; }} />
+              <img src={fishImg2} alt="Fish" style={{ width: P ? 90 : 95, height: P ? 75 : 80, objectFit: 'cover', border: '1px solid #ccc', borderRadius: 4 }} onError={e => { e.target.style.display = 'none'; }} />
             </div>
 
             <div style={{ border: P ? '2px solid #000' : '1px solid var(--glass-border)', borderRadius: P ? 0 : 8, overflow: 'hidden' }}>
-              <div style={{ textAlign: 'center', padding: '5px', borderBottom: P ? '2px solid #000' : '1px solid var(--glass-border)', fontWeight: 900, fontSize: 14, letterSpacing: 6, background: P ? '#f0f0f0' : 'rgba(14,116,144,0.25)', color: P ? '#000' : 'var(--ocean-glow)' }}>INVOICE</div>
+              <div style={{ textAlign: 'center', padding: '6px', borderBottom: P ? '2px solid #000' : '1px solid var(--glass-border)', fontWeight: 900, fontSize: 16, letterSpacing: 6, background: P ? '#f0f0f0' : 'rgba(14,116,144,0.25)', color: P ? '#000' : 'var(--ocean-glow)' }}>INVOICE</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: P ? '1px solid #000' : '1px solid var(--glass-border)' }}>
                 <div style={{ padding: '10px 14px', borderRight: P ? '1px solid #000' : '1px solid var(--glass-border)' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: P ? '#555' : 'var(--text-secondary)', marginBottom: 4 }}>BUYER and Address</div>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{invoice.buyerName}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{invoice.buyerName}</div>
                   {invoice.buyerCity && <div style={{ fontSize: 11, color: P ? '#555' : 'var(--text-secondary)' }}>{invoice.buyerCity}</div>}
                   {invoice.buyerAddress && invoice.buyerAddress !== invoice.buyerCity && <div style={{ fontSize: 11, color: P ? '#555' : 'var(--text-secondary)' }}>{invoice.buyerAddress}</div>}
                   {invoice.buyerPhone && <div style={{ fontSize: 11, color: P ? '#555' : 'var(--text-secondary)' }}>📞 {invoice.buyerPhone}</div>}
                 </div>
                 <div style={{ padding: '10px 14px' }}>
+                  {/* Invoice number prominently at top */}
+                  <div style={{ fontSize: 14, fontWeight: 900, color: P ? '#000' : 'var(--gold)', marginBottom: 6, paddingBottom: 4, borderBottom: P ? '2px solid #000' : '1px solid var(--glass-border)' }}>
+                    INVOICE NO: {invoice.invoiceNo}
+                  </div>
                   {[
                     ['INVOICE DATE', new Date(invoice.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })],
-                    ['INVOICE NO', invoice.invoiceNo],
                     ['STATE', invoice.state || 'Tamil Nadu'],
                     ['STATE CODE', invoice.stateCode || '33'],
                     ['GSTIN', invoice.gstin || '33ARIPM4129M1ZK'],
@@ -682,8 +754,8 @@ export const InvoicePrintView = ({ invoice, printMode = false }) => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: P ? '#f0f0f0' : 'rgba(14,116,144,0.25)' }}>
-                    {['Sl.No', 'Description of Goods', 'Quantity', 'Pack', 'Rate', 'Disc', 'Amount'].map((h, i) => (
-                      <th key={h} style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '7px 8px', fontWeight: 700, fontSize: 11, textAlign: i > 3 ? 'right' : (i === 0 ? 'center' : 'left'), color: P ? '#000' : 'var(--ocean-foam)', whiteSpace: 'nowrap' }}>{h}</th>
+                    {['Sl.No', 'Description of Goods', 'Rate', 'Quantity', 'Pack', 'Disc', 'Amount'].map((h, i) => (
+                      <th key={h} style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '7px 8px', fontWeight: 700, fontSize: 11, textAlign: i > 4 ? 'right' : (i === 0 ? 'center' : i === 4 ? 'center' : i >= 2 ? 'right' : 'left'), color: P ? '#000' : 'var(--ocean-foam)', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -692,9 +764,9 @@ export const InvoicePrintView = ({ invoice, printMode = false }) => {
                     <tr key={i}>
                       <td style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '6px 8px', fontSize: 11, textAlign: 'center' }}>{item.slNo || i + 1}</td>
                       <td style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '6px 8px', fontWeight: 600, fontSize: 11 }}>{item.description}</td>
+                      <td style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '6px 8px', textAlign: 'right', fontSize: 11 }}>{Number(item.rate).toFixed(2)}</td>
                       <td style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '6px 8px', textAlign: 'right', fontSize: 11 }}>{item.quantity}</td>
                       <td style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '6px 8px', fontSize: 11, textAlign: 'center' }}>{item.pack}</td>
-                      <td style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '6px 8px', textAlign: 'right', fontSize: 11 }}>{Number(item.rate).toFixed(2)}</td>
                       <td style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '6px 8px', textAlign: 'right', fontSize: 11 }}>{Number(item.discount || 0).toFixed(2)}</td>
                       <td style={{ border: P ? '1px solid #000' : '1px solid var(--glass-border)', padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 11, color: P ? '#000' : 'var(--gold-light)' }}>{Number(item.amount).toFixed(2)}</td>
                     </tr>
@@ -747,7 +819,6 @@ export const InvoicePrintView = ({ invoice, printMode = false }) => {
                       ))}
                     </div>
                   </div>
-                  {/* Signature + QR Code using imported asset */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '10px 16px', borderTop: P ? '1px solid #000' : '1px solid var(--glass-border)', fontSize: 11, fontWeight: 700 }}>
                     <span>Customer's Seal and Signature</span>
                     <div style={{ textAlign: 'center' }}>
@@ -771,5 +842,5 @@ export const InvoicePrintView = ({ invoice, printMode = false }) => {
   );
 };
 
-export { handleWhatsAppPDF,generateInvoiceHTML  };
+export { handleWhatsAppPDF, generateInvoiceHTML };
 export default CreateInvoice;

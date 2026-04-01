@@ -1,6 +1,10 @@
 // src/components/admin/SalesReport.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { invoiceAPI } from '../../services/api';
+
+import fishImg1 from '../../assets/fishImg1.jpg';
+import fishImg2 from '../../assets/fishImg2.jpg';
+import bannerImg from '../../assets/BannerImg.jpeg';
 
 const PERIODS = [
   { label: 'Today', value: 'day' },
@@ -10,138 +14,141 @@ const PERIODS = [
   { label: 'Custom Range', value: 'custom' },
 ];
 
-const ROWS_PER_PAGE = 20;
+/* ── Convert image to base64 ── */
+const imageToBase64 = (url) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      resolve(canvas.toDataURL());
+    };
+    img.onerror = () => resolve('');
+    img.src = url;
+  });
+};
 
-/* ── Generate A4 sales report HTML for print/PDF ── */
-const generateSalesReportHTML = (data, period, startDate, endDate) => {
+/* ── Dot-matrix style Sales Report PDF — grouped by bill ── */
+const generateSalesReportHTML = async (data, period, startDate, endDate) => {
+  const [fish1B64, fish2B64, bannerB64] = await Promise.all([
+    imageToBase64(fishImg1),
+    imageToBase64(fishImg2),
+    imageToBase64(bannerImg),
+  ]);
+
   const invoices = data.invoices || [];
-  const pages = [];
-  for (let i = 0; i < invoices.length; i += ROWS_PER_PAGE) {
-    pages.push(invoices.slice(i, i + ROWS_PER_PAGE));
-  }
-  if (pages.length === 0) pages.push([]);
-
-  const totalPages = pages.length;
   const generatedDate = new Date().toLocaleDateString('en-IN');
+  const generatedTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   const periodLabel = period !== 'custom' ? period.toUpperCase() : `${startDate} to ${endDate}`;
 
-  const pagesHTML = pages.map((pageInvoices, pageIndex) => {
-    const isLastPage = pageIndex === totalPages - 1;
-    const pageNum = pageIndex + 1;
-
-    const emptyRowsCount = Math.max(0, ROWS_PER_PAGE - pageInvoices.length);
-
-    const rowsHTML = pageInvoices.map(inv => `
+  // Build all bill rows as HTML blocks
+  const billsHTML = invoices.map((inv, idx) => {
+    const items = inv.items || [];
+    const itemRowsHTML = items.map(item => `
       <tr>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;text-align:right;">#${inv.invoiceNo}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;">${new Date(inv.invoiceDate).toLocaleDateString('en-IN')}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;font-weight:600;">${inv.buyerName}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;text-align:right;">₹${Number(inv.subtotal || 0).toFixed(2)}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;text-align:right;">${inv.cgstAmount > 0 ? `₹${Number(inv.cgstAmount).toFixed(2)}` : '—'}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;text-align:right;">${inv.sgstAmount > 0 ? `₹${Number(inv.sgstAmount).toFixed(2)}` : '—'}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;text-align:right;font-weight:bold;">₹${Number(inv.netAmount || inv.grandTotal || 0).toFixed(2)}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;text-align:right;">₹${Number(inv.paidAmount || 0).toFixed(2)}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;text-align:right;color:${inv.balanceAmount > 0 ? '#c00' : '#006600'};">${inv.balanceAmount > 0 ? `₹${Number(inv.balanceAmount).toFixed(2)}` : '✓'}</td>
-        <td style="border:1px solid #000;padding:5px 6px;font-size:10px;text-align:center;">${inv.paymentStatus}</td>
+        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;">&nbsp;&nbsp;&nbsp;${item.description || ''}</td>
+        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;text-align:right;">${Number(item.rate || 0).toFixed(2)}</td>
+        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;text-align:right;">${item.quantity || 0}</td>
+        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;text-align:center;">${item.pack || ''}</td>
+        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;text-align:right;font-weight:bold;">${Number(item.amount || 0).toFixed(2)}</td>
       </tr>
     `).join('');
 
-    const emptyRowsHTML = Array(emptyRowsCount).fill(null).map(() => `
-      <tr>
-        ${Array(10).fill('<td style="border:1px solid #000;padding:5px 6px;font-size:10px;">&nbsp;</td>').join('')}
-      </tr>
-    `).join('');
-
-    const footerHTML = isLastPage ? `
-      <tfoot>
-        <tr style="background:#e8e8e8;font-weight:bold;">
-          <td colspan="3" style="border:2px solid #000;padding:6px 8px;font-size:11px;">TOTAL (${data.count} invoices)</td>
-          <td style="border:2px solid #000;padding:6px 8px;font-size:11px;text-align:right;">₹${Number(data.totalSales - data.totalGst).toFixed(2)}</td>
-          <td style="border:2px solid #000;padding:6px 8px;font-size:11px;text-align:right;">₹${Number(data.totalCgst).toFixed(2)}</td>
-          <td style="border:2px solid #000;padding:6px 8px;font-size:11px;text-align:right;">₹${Number(data.totalSgst).toFixed(2)}</td>
-          <td style="border:2px solid #000;padding:6px 8px;font-size:12px;text-align:right;">₹${Number(data.totalSales).toFixed(2)}</td>
-          <td style="border:2px solid #000;padding:6px 8px;font-size:11px;text-align:right;">₹${Number(data.totalPaid).toFixed(2)}</td>
-          <td style="border:2px solid #000;padding:6px 8px;font-size:11px;text-align:right;color:#c00;">₹${Number(data.totalBalance).toFixed(2)}</td>
-          <td style="border:2px solid #000;padding:6px 8px;"></td>
-        </tr>
-      </tfoot>
-    ` : '';
+    const netAmt = Number(inv.netAmount || inv.grandTotal || 0);
+    const paidAmt = Number(inv.paidAmount || 0);
+    const balAmt = Number(inv.balanceAmount || 0);
 
     return `
-      <div style="width:210mm;min-height:297mm;background:#fff;font-family:Arial,sans-serif;color:#000;padding:10mm;box-sizing:border-box;page-break-after:${isLastPage ? 'auto' : 'always'};">
-        <!-- Header with 3 images -->
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <img src="../../assets/fishImg1.jpg" alt="" style="width:70px;height:60px;object-fit:cover;border:1px solid #ccc;" onerror="this.style.display='none'" />
-          <div style="text-align:center;flex:1;padding:0 10px;">
-            <img src="../../assets/BannerImg.jpeg" alt="Banner" style="max-width:180px;max-height:50px;object-fit:contain;display:block;margin:0 auto 3px;" onerror="this.style.display='none'" />
-            <div style="font-weight:900;font-size:15px;letter-spacing:2px;">MUTHUPANDI FISH FARM</div>
-            <div style="font-size:10px;color:#555;">6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
-            <div style="font-size:10px;color:#555;">Contact 9842186330 &nbsp; 9842886330</div>
-          </div>
-          <img src="../../assets/fishImg2.jpg" alt="" style="width:70px;height:60px;object-fit:cover;border:1px solid #ccc;" onerror="this.style.display='none'" />
-        </div>
-
-        <div style="border:2px solid #000;">
-          <div style="text-align:center;padding:5px;border-bottom:2px solid #000;font-weight:900;font-size:13px;letter-spacing:4px;background:#f0f0f0;">
-            SALES REPORT
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid #000;font-size:10px;">
-            <span><strong>Period:</strong> ${periodLabel}</span>
-            <span><strong>Generated:</strong> ${generatedDate}</span>
-            <span><strong>Page ${pageNum} of ${totalPages}</strong></span>
-          </div>
-
+      <tr style="background:${idx % 2 === 0 ? '#f9f9f9' : '#fff'};">
+        <td colspan="8" style="padding:0;border-bottom:2px solid #555;">
           <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr style="background:#f0f0f0;">
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:right;width:50px;">Inv No</th>
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;width:65px;">Date</th>
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;">Buyer</th>
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:right;width:70px;">Subtotal</th>
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:right;width:55px;">CGST</th>
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:right;width:55px;">SGST</th>
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:right;width:75px;">Net Amt</th>
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:right;width:70px;">Paid</th>
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:right;width:70px;">Balance</th>
-                <th style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:center;width:55px;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHTML}
-              ${emptyRowsHTML}
-            </tbody>
-            ${footerHTML}
+            <!-- Bill Header Row -->
+            <tr style="background:#333;color:#fff;">
+              <td style="padding:3px 6px;font-size:10px;font-weight:bold;width:55px;">#${inv.invoiceNo}</td>
+              <td style="padding:3px 6px;font-size:10px;">${new Date(inv.invoiceDate).toLocaleDateString('en-IN')}</td>
+              <td style="padding:3px 6px;font-size:10px;font-weight:bold;">${inv.buyerName}</td>
+              ${inv.buyerPhone ? `<td style="padding:3px 6px;font-size:10px;color:#ccc;">${inv.buyerPhone}</td>` : '<td></td>'}
+              <td style="padding:3px 6px;font-size:10px;text-align:right;">${items.length} item${items.length !== 1 ? 's' : ''}</td>
+              <td style="padding:3px 6px;font-size:10px;text-align:right;font-weight:bold;">₹${netAmt.toFixed(2)}</td>
+              <td style="padding:3px 6px;font-size:10px;text-align:right;color:${balAmt > 0 ? '#ff6b6b' : '#90ee90'};">
+                ${balAmt > 0 ? `BAL ₹${balAmt.toFixed(2)}` : '✓ PAID'}
+              </td>
+              <td style="padding:3px 6px;font-size:10px;text-align:center;">
+                <span style="background:${inv.paymentStatus === 'Paid' ? '#2d6a4f' : inv.paymentStatus === 'Partial' ? '#7d4e00' : '#7d0000'};color:#fff;padding:1px 6px;border-radius:3px;font-size:9px;">
+                  ${inv.paymentStatus}
+                </span>
+              </td>
+            </tr>
+            <!-- Product Lines -->
+            <tr>
+              <td colspan="8" style="padding:0;">
+                <table style="width:100%;border-collapse:collapse;background:#fff;">
+                  <tr style="background:#e8e8e8;">
+                    <th style="padding:2px 6px;font-size:9px;text-align:left;font-style:italic;">Product</th>
+                    <th style="padding:2px 6px;font-size:9px;text-align:right;width:60px;">Rate</th>
+                    <th style="padding:2px 6px;font-size:9px;text-align:right;width:40px;">Qty</th>
+                    <th style="padding:2px 6px;font-size:9px;text-align:center;width:40px;">Unit</th>
+                    <th style="padding:2px 6px;font-size:9px;text-align:right;width:65px;">Amount</th>
+                  </tr>
+                  ${itemRowsHTML}
+                  <!-- Bill summary footer -->
+                  <tr style="background:#f0f0f0;border-top:1px solid #aaa;">
+                    <td colspan="3" style="padding:2px 6px;font-size:9px;color:#555;">
+                      ${inv.cgstAmount > 0 ? `CGST: ₹${Number(inv.cgstAmount).toFixed(2)}` : ''}
+                      ${inv.sgstAmount > 0 ? ` | SGST: ₹${Number(inv.sgstAmount).toFixed(2)}` : ''}
+                      ${inv.transport > 0 ? ` | Transport: ₹${Number(inv.transport).toFixed(2)}` : ''}
+                    </td>
+                    <td style="padding:2px 6px;font-size:9px;text-align:right;font-weight:bold;">Net:</td>
+                    <td style="padding:2px 6px;font-size:10px;text-align:right;font-weight:bold;">₹${netAmt.toFixed(2)}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
           </table>
-
-          ${isLastPage ? `
-            <!-- Summary box on last page -->
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid #000;">
-              ${[
-                ['Total Sales', `₹${Number(data.totalSales).toFixed(2)}`],
-                ['Total GST', `₹${Number(data.totalGst).toFixed(2)}`],
-                ['Amount Collected', `₹${Number(data.totalPaid).toFixed(2)}`],
-                ['CGST', `₹${Number(data.totalCgst).toFixed(2)}`],
-                ['SGST', `₹${Number(data.totalSgst).toFixed(2)}`],
-                ['Balance Pending', `₹${Number(data.totalBalance).toFixed(2)}`],
-              ].map(([label, value]) => `
-                <div style="padding:8px 12px;border-right:1px solid #ccc;border-bottom:1px solid #ccc;">
-                  <div style="font-size:9px;color:#555;">${label}</div>
-                  <div style="font-size:12px;font-weight:bold;">${value}</div>
-                </div>
-              `).join('')}
-            </div>
-            <div style="text-align:center;padding:6px;border-top:1px solid #000;font-size:9px;color:#555;">
-              This is a Computer Generated Sales Report
-            </div>
-          ` : `
-            <div style="text-align:right;padding:6px 12px;border-top:1px solid #000;font-size:10px;color:#555;">
-              Continued on next page... (Page ${pageNum} of ${totalPages})
-            </div>
-          `}
-        </div>
-      </div>
+        </td>
+      </tr>
     `;
   }).join('');
+
+  const headerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      ${fish1B64 ? `<img src="${fish1B64}" alt="" style="width:70px;height:60px;object-fit:cover;border:1px solid #ccc;" />` : '<div style="width:70px;"></div>'}
+      <div style="text-align:center;flex:1;padding:0 10px;">
+        ${bannerB64 ? `<img src="${bannerB64}" alt="Banner" style="max-width:200px;max-height:55px;object-fit:contain;display:block;margin:0 auto 4px;" />` : ''}
+        <div style="font-weight:900;font-size:16px;letter-spacing:2px;">MUTHUPANDI FISH FARM</div>
+        <div style="font-size:10px;color:#555;">6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
+        <div style="font-size:10px;color:#555;">Contact 9842186330 &nbsp; 9842886330</div>
+      </div>
+      ${fish2B64 ? `<img src="${fish2B64}" alt="" style="width:70px;height:60px;object-fit:cover;border:1px solid #ccc;" />` : '<div style="width:70px;"></div>'}
+    </div>
+  `;
+
+  const summaryHTML = `
+    <div style="border:2px solid #000;margin-top:8px;">
+      <div style="background:#333;color:#fff;text-align:center;padding:4px;font-weight:900;font-size:11px;letter-spacing:3px;">SUMMARY</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);">
+        ${[
+          ['Total Invoices', data.count],
+          ['Total Sales', `₹${Number(data.totalSales).toFixed(2)}`],
+          ['Total GST', `₹${Number(data.totalGst).toFixed(2)}`],
+          ['CGST', `₹${Number(data.totalCgst).toFixed(2)}`],
+          ['SGST', `₹${Number(data.totalSgst).toFixed(2)}`],
+          ['Amount Collected', `₹${Number(data.totalPaid).toFixed(2)}`],
+          ['Balance Pending', `₹${Number(data.totalBalance).toFixed(2)}`],
+        ].map(([label, value]) => `
+          <div style="padding:6px 10px;border-right:1px solid #ccc;border-bottom:1px solid #ccc;">
+            <div style="font-size:9px;color:#555;">${label}</div>
+            <div style="font-size:12px;font-weight:bold;">${value}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="text-align:center;padding:5px;font-size:9px;color:#555;border-top:1px solid #ccc;">
+        Generated: ${generatedDate} ${generatedTime} &nbsp;|&nbsp; This is a Computer Generated Sales Report
+      </div>
+    </div>
+  `;
 
   return `<!DOCTYPE html>
 <html>
@@ -150,14 +157,55 @@ const generateSalesReportHTML = (data, period, startDate, endDate) => {
   <title>Sales Report - Muthupandi Fish Farm</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #fff; }
+    body { background: #fff; font-family: 'Courier New', Courier, monospace; }
     @media print {
-      @page { size: A4; margin: 0; }
+      @page { size: A4; margin: 8mm; }
       body { margin: 0; }
     }
   </style>
 </head>
-<body>${pagesHTML}</body>
+<body>
+  <div style="width:210mm;background:#fff;font-family:'Courier New',Courier,monospace;color:#000;padding:8mm;box-sizing:border-box;">
+    ${headerHTML}
+    <div style="border:2px solid #000;">
+      <!-- Title bar -->
+      <div style="text-align:center;padding:5px;border-bottom:2px solid #000;font-weight:900;font-size:14px;letter-spacing:5px;background:#f0f0f0;">
+        SALES REPORT
+      </div>
+      <!-- Period bar -->
+      <div style="display:flex;justify-content:space-between;padding:4px 10px;border-bottom:2px solid #000;font-size:10px;background:#e8e8e8;">
+        <span><strong>PERIOD:</strong> ${periodLabel}</span>
+        <span><strong>TOTAL BILLS:</strong> ${data.count}</span>
+        <span><strong>GENERATED:</strong> ${generatedDate} ${generatedTime}</span>
+      </div>
+      <!-- Column header for bills -->
+      <div style="display:flex;background:#555;color:#fff;padding:3px 6px;font-size:10px;font-weight:bold;border-bottom:1px solid #000;">
+        <span style="width:55px;">INV NO</span>
+        <span style="width:70px;">DATE</span>
+        <span style="flex:1;">BUYER</span>
+        <span style="width:90px;">PHONE</span>
+        <span style="width:50px;text-align:right;">ITEMS</span>
+        <span style="width:80px;text-align:right;">NET AMT</span>
+        <span style="width:90px;text-align:right;">BALANCE</span>
+        <span style="width:55px;text-align:center;">STATUS</span>
+      </div>
+      <!-- Bills grouped -->
+      <table style="width:100%;border-collapse:collapse;">
+        <tbody>
+          ${billsHTML}
+        </tbody>
+      </table>
+      <!-- Totals row -->
+      <div style="display:flex;background:#222;color:#fff;padding:5px 6px;font-size:11px;font-weight:bold;border-top:2px solid #000;">
+        <span style="flex:1;">TOTAL (${data.count} Bills)</span>
+        <span style="width:80px;text-align:right;">₹${Number(data.totalSales).toFixed(2)}</span>
+        <span style="width:90px;text-align:right;color:#ffaaaa;">₹${Number(data.totalBalance).toFixed(2)}</span>
+        <span style="width:55px;"></span>
+      </div>
+    </div>
+    ${summaryHTML}
+  </div>
+</body>
 </html>`;
 };
 
@@ -186,14 +234,14 @@ const SalesReport = () => {
     setLoading(false);
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!data) return;
-    const htmlContent = generateSalesReportHTML(data, period, startDate, endDate);
+    const htmlContent = await generateSalesReportHTML(data, period, startDate, endDate);
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) { showToast('Please allow popups to print', 'error'); return; }
     printWindow.document.write(htmlContent);
     printWindow.document.close();
-    setTimeout(() => { printWindow.focus(); printWindow.print(); }, 800);
+    setTimeout(() => { printWindow.focus(); printWindow.print(); }, 1200);
   };
 
   const handleExcelExport = () => {
@@ -322,67 +370,52 @@ const SalesReport = () => {
             ))}
           </div>
 
-          {/* Invoice Table (screen view) */}
+          {/* Invoice Table — grouped by bill with products listed */}
           <div className="glass-card overflow-hidden">
             <div className="p-3 d-flex justify-content-between align-items-center" style={{ borderBottom: '1px solid var(--glass-border)' }}>
-              <h6 style={{ margin: 0, color: 'var(--ocean-glow)' }}>Invoice Details — {data.count} records</h6>
+              <h6 style={{ margin: 0, color: 'var(--ocean-glow)' }}>Bills — {data.count} records</h6>
             </div>
-            <div className="table-responsive">
-              <table className="table table-ocean table-hover mb-0" style={{ fontSize: '0.82rem' }}>
-                <thead>
-                  <tr>
-                    <th>Invoice No</th>
-                    <th>Date</th>
-                    <th>Buyer</th>
-                    <th className="text-end">Subtotal</th>
-                    <th className="text-end">CGST</th>
-                    <th className="text-end">SGST</th>
-                    <th className="text-end">Net Amount</th>
-                    <th className="text-end">Paid</th>
-                    <th className="text-end">Balance</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.invoices.length === 0 ? (
-                    <tr><td colSpan="10" className="text-center py-4" style={{ color: 'var(--text-secondary)' }}>No invoices for this period</td></tr>
-                  ) : data.invoices.map(inv => (
-                    <tr key={inv._id}>
-                      <td style={{ color: 'var(--ocean-glow)', fontWeight: 700 }}>#{inv.invoiceNo}</td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{new Date(inv.invoiceDate).toLocaleDateString('en-IN')}</td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{inv.buyerName}</div>
-                        {inv.buyerPhone && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{inv.buyerPhone}</div>}
-                      </td>
-                      <td className="text-end">₹{Number(inv.subtotal || 0).toLocaleString('en-IN')}</td>
-                      <td className="text-end" style={{ color: 'var(--ocean-light)' }}>{inv.cgstAmount > 0 ? `₹${Number(inv.cgstAmount).toFixed(2)}` : '—'}</td>
-                      <td className="text-end" style={{ color: 'var(--ocean-light)' }}>{inv.sgstAmount > 0 ? `₹${Number(inv.sgstAmount).toFixed(2)}` : '—'}</td>
-                      <td className="text-end" style={{ color: 'var(--gold-light)', fontWeight: 700 }}>₹{Number(inv.netAmount || inv.grandTotal || 0).toLocaleString('en-IN')}</td>
-                      <td className="text-end" style={{ color: '#4ade80' }}>₹{Number(inv.paidAmount || 0).toLocaleString('en-IN')}</td>
-                      <td className="text-end" style={{ color: inv.balanceAmount > 0 ? '#fca5a5' : '#4ade80' }}>
-                        {inv.balanceAmount > 0 ? `₹${Number(inv.balanceAmount).toLocaleString('en-IN')}` : '✓'}
-                      </td>
-                      <td>
-                        <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: '0.7rem', fontWeight: 600, background: `${statusColor(inv.paymentStatus)}22`, color: statusColor(inv.paymentStatus), border: `1px solid ${statusColor(inv.paymentStatus)}44` }}>
-                          {inv.paymentStatus}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr style={{ borderTop: '2px solid var(--glass-border)', background: 'rgba(6,182,212,0.05)' }}>
-                    <td colSpan="3" style={{ fontWeight: 800, color: 'var(--ocean-glow)', padding: '12px' }}>TOTAL ({data.count} invoices)</td>
-                    <td className="text-end" style={{ fontWeight: 700, padding: '12px' }}>₹{Number(data.totalSales - data.totalGst).toLocaleString('en-IN')}</td>
-                    <td className="text-end" style={{ fontWeight: 700, color: 'var(--ocean-light)', padding: '12px' }}>₹{Number(data.totalCgst).toLocaleString('en-IN')}</td>
-                    <td className="text-end" style={{ fontWeight: 700, color: 'var(--ocean-light)', padding: '12px' }}>₹{Number(data.totalSgst).toLocaleString('en-IN')}</td>
-                    <td className="text-end" style={{ fontWeight: 800, color: 'var(--gold)', fontSize: '1rem', padding: '12px' }}>₹{Number(data.totalSales).toLocaleString('en-IN')}</td>
-                    <td className="text-end" style={{ fontWeight: 700, color: '#4ade80', padding: '12px' }}>₹{Number(data.totalPaid).toLocaleString('en-IN')}</td>
-                    <td className="text-end" style={{ fontWeight: 700, color: '#fca5a5', padding: '12px' }}>₹{Number(data.totalBalance).toLocaleString('en-IN')}</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
+            <div style={{ overflowX: 'auto' }}>
+              {data.invoices.length === 0 ? (
+                <div className="text-center py-4" style={{ color: 'var(--text-secondary)' }}>No invoices for this period</div>
+              ) : data.invoices.map(inv => (
+                <div key={inv._id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                  {/* Bill header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: 'rgba(6,182,212,0.07)', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--ocean-glow)', fontWeight: 800, fontSize: '0.9rem', minWidth: 60 }}>#{inv.invoiceNo}</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', minWidth: 80 }}>{new Date(inv.invoiceDate).toLocaleDateString('en-IN')}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--ocean-foam)', flex: 1 }}>{inv.buyerName}</span>
+                    {inv.buyerPhone && <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{inv.buyerPhone}</span>}
+                    <span style={{ color: 'var(--gold-light)', fontWeight: 800, fontSize: '0.95rem' }}>₹{Number(inv.netAmount || inv.grandTotal || 0).toLocaleString('en-IN')}</span>
+                    <span style={{ color: inv.balanceAmount > 0 ? '#fca5a5' : '#4ade80', fontSize: '0.8rem', fontWeight: 600 }}>
+                      {inv.balanceAmount > 0 ? `Bal ₹${Number(inv.balanceAmount).toLocaleString('en-IN')}` : '✓ Paid'}
+                    </span>
+                    <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: '0.7rem', fontWeight: 600, background: `${statusColor(inv.paymentStatus)}22`, color: statusColor(inv.paymentStatus), border: `1px solid ${statusColor(inv.paymentStatus)}44` }}>
+                      {inv.paymentStatus}
+                    </span>
+                  </div>
+                  {/* Product lines */}
+                  {(inv.items || []).length > 0 && (
+                    <div style={{ padding: '4px 16px 8px 32px' }}>
+                      {(inv.items || []).map((item, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 12, padding: '3px 0', borderBottom: '1px dotted var(--glass-border)', fontSize: '0.8rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                          <span style={{ flex: 1, color: 'var(--ocean-foam)' }}>{item.description}</span>
+                          <span>Rate: <strong style={{ color: 'var(--ocean-light)' }}>₹{Number(item.rate || 0).toFixed(2)}</strong></span>
+                          <span>Qty: <strong>{item.quantity}</strong> {item.pack}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--gold-light)' }}>₹{Number(item.amount || 0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {/* Totals */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 24, padding: '12px 16px', borderTop: '2px solid var(--glass-border)', background: 'rgba(6,182,212,0.05)', flexWrap: 'wrap' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>TOTAL ({data.count} bills)</span>
+                <span style={{ color: 'var(--gold)', fontWeight: 800, fontSize: '1.05rem' }}>₹{Number(data.totalSales).toLocaleString('en-IN')}</span>
+                <span style={{ color: '#4ade80', fontWeight: 700 }}>Paid: ₹{Number(data.totalPaid).toLocaleString('en-IN')}</span>
+                <span style={{ color: '#fca5a5', fontWeight: 700 }}>Balance: ₹{Number(data.totalBalance).toLocaleString('en-IN')}</span>
+              </div>
             </div>
           </div>
         </>
