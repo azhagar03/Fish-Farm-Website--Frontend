@@ -48,11 +48,11 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
     const items = inv.items || [];
     const itemRowsHTML = items.map(item => `
       <tr>
-        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;">&nbsp;&nbsp;&nbsp;${item.description || ''}</td>
-        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;text-align:right;">${Number(item.rate || 0).toFixed(2)}</td>
-        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;text-align:right;">${item.quantity || 0}</td>
-        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;text-align:center;">${item.pack || ''}</td>
-        <td style="padding:1px 6px;font-size:10px;border-bottom:1px dotted #bbb;text-align:right;font-weight:bold;">${Number(item.amount || 0).toFixed(2)}</td>
+        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;">&nbsp;&nbsp;&nbsp;${item.description || ''}</td>
+        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;text-align:right;">${Number(item.rate || 0).toFixed(2)}</td>
+        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;text-align:right;">${item.quantity || 0}</td>
+        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;text-align:center;">${item.pack || ''}</td>
+        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;text-align:right;font-weight:bold;">${Number(item.amount || 0).toFixed(2)}</td>
       </tr>
     `).join('');
 
@@ -86,21 +86,21 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
               <td colspan="8" style="padding:0;">
                 <table style="width:100%;border-collapse:collapse;background:#fff;">
                   <tr style="background:#e8e8e8;">
-                    <th style="padding:2px 6px;font-size:9px;text-align:left;font-style:italic;">Product</th>
-                    <th style="padding:2px 6px;font-size:9px;text-align:right;width:60px;">Rate</th>
-                    <th style="padding:2px 6px;font-size:9px;text-align:right;width:40px;">Qty</th>
-                    <th style="padding:2px 6px;font-size:9px;text-align:center;width:40px;">Unit</th>
-                    <th style="padding:2px 6px;font-size:9px;text-align:right;width:65px;">Amount</th>
+                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:left;">Product</th>
+                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:right;width:60px;">Rate</th>
+                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:right;width:40px;">Qty</th>
+                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:center;width:40px;">Unit</th>
+                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:right;width:65px;">Amount</th>
                   </tr>
                   ${itemRowsHTML}
                   <!-- Bill summary footer -->
                   <tr style="background:#f0f0f0;border-top:1px solid #aaa;">
-                    <td colspan="3" style="padding:2px 6px;font-size:9px;color:#555;">
+                    <td colspan="3" style="padding:2px 6px;font-size:9px;font-weight:700;color:#000;">
                       ${inv.cgstAmount > 0 ? `CGST: ₹${Number(inv.cgstAmount).toFixed(2)}` : ''}
                       ${inv.sgstAmount > 0 ? ` | SGST: ₹${Number(inv.sgstAmount).toFixed(2)}` : ''}
                       ${inv.transport > 0 ? ` | Transport: ₹${Number(inv.transport).toFixed(2)}` : ''}
                     </td>
-                    <td style="padding:2px 6px;font-size:9px;text-align:right;font-weight:bold;">Net:</td>
+                    <td style="padding:2px 6px;font-size:10px;text-align:right;font-weight:900;color:#000;">Net:</td>
                     <td style="padding:2px 6px;font-size:10px;text-align:right;font-weight:bold;">₹${netAmt.toFixed(2)}</td>
                   </tr>
                 </table>
@@ -113,15 +113,16 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
   }).join('');
 
   const headerHTML = `
+    <div style="text-align:center;font-size:11px;font-weight:900;color:#000;margin-bottom:4px;font-family:'Noto Sans Tamil','Latha','Arial Unicode MS',Arial,sans-serif;letter-spacing:3px;">ஸ்ரீ பாண்டி துணை</div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      ${fish1B64 ? `<img src="${fish1B64}" alt="" style="width:70px;height:60px;object-fit:cover;border:1px solid #ccc;" />` : '<div style="width:70px;"></div>'}
+      ${fish1B64 ? `<img src="${fish1B64}" alt="" style="width:90px;height:80px;object-fit:contain;" />` : '<div style="width:70px;"></div>'}
       <div style="text-align:center;flex:1;padding:0 10px;">
-        ${bannerB64 ? `<img src="${bannerB64}" alt="Banner" style="max-width:200px;max-height:55px;object-fit:contain;display:block;margin:0 auto 4px;" />` : ''}
+        ${bannerB64 ? `<img src="${bannerB64}" alt="Banner" style="max-width:350px;max-height:100px;object-fit:contain;display:block;margin:0 auto 4px;" />` : ''}
         <div style="font-weight:900;font-size:16px;letter-spacing:2px;">MUTHUPANDI FISH FARM</div>
         <div style="font-size:10px;color:#555;">6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
         <div style="font-size:10px;color:#555;">Contact 9842186330 &nbsp; 9842886330</div>
       </div>
-      ${fish2B64 ? `<img src="${fish2B64}" alt="" style="width:70px;height:60px;object-fit:cover;border:1px solid #ccc;" />` : '<div style="width:70px;"></div>'}
+      ${fish2B64 ? `<img src="${fish2B64}" alt="" style="width:90px;height:80px;object-fit:contain;" />` : '<div style="width:70px;"></div>'}
     </div>
   `;
 
@@ -139,12 +140,12 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
           ['Balance Pending', `₹${Number(data.totalBalance).toFixed(2)}`],
         ].map(([label, value]) => `
           <div style="padding:6px 10px;border-right:1px solid #ccc;border-bottom:1px solid #ccc;">
-            <div style="font-size:9px;color:#555;">${label}</div>
-            <div style="font-size:12px;font-weight:bold;">${value}</div>
+            <div style="font-size:10px;font-weight:700;color:#000;">${label}</div>
+            <div style="font-size:12px;font-weight:900;color:#000;">${value}</div>
           </div>
         `).join('')}
       </div>
-      <div style="text-align:center;padding:5px;font-size:9px;color:#555;border-top:1px solid #ccc;">
+      <div style="text-align:center;padding:5px;font-size:10px;font-weight:700;color:#000;border-top:1px solid #ccc;">
         Generated: ${generatedDate} ${generatedTime} &nbsp;|&nbsp; This is a Computer Generated Sales Report
       </div>
     </div>
@@ -174,9 +175,9 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
       </div>
       <!-- Period bar -->
       <div style="display:flex;justify-content:space-between;padding:4px 10px;border-bottom:2px solid #000;font-size:10px;background:#e8e8e8;">
-        <span><strong>PERIOD:</strong> ${periodLabel}</span>
-        <span><strong>TOTAL BILLS:</strong> ${data.count}</span>
-        <span><strong>GENERATED:</strong> ${generatedDate} ${generatedTime}</span>
+        <span style="font-weight:900;color:#000;"><strong>PERIOD:</strong> ${periodLabel}</span>
+        <span style="font-weight:900;color:#000;"><strong>TOTAL BILLS:</strong> ${data.count}</span>
+        <span style="font-weight:900;color:#000;"><strong>GENERATED:</strong> ${generatedDate} ${generatedTime}</span>
       </div>
       <!-- Column header for bills -->
       <div style="display:flex;background:#555;color:#fff;padding:3px 6px;font-size:10px;font-weight:bold;border-bottom:1px solid #000;">
