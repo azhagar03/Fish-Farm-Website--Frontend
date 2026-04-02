@@ -30,7 +30,7 @@ const imageToBase64 = (url) => {
   });
 };
 
-/* ── Dot-matrix style Sales Report PDF — grouped by bill ── */
+/* ── Sales Report PDF — grouped by bill — ALL TEXT BOLD ── */
 const generateSalesReportHTML = async (data, period, startDate, endDate) => {
   const [fish1B64, fish2B64, bannerB64] = await Promise.all([
     imageToBase64(fishImg1),
@@ -43,40 +43,42 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
   const generatedTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   const periodLabel = period !== 'custom' ? period.toUpperCase() : `${startDate} to ${endDate}`;
 
-  // Build all bill rows as HTML blocks
+  // Bold text style helper
+  const B = 'font-weight:900;color:#000;';
+  const BL = 'font-weight:700;color:#000;'; // slightly less bold for labels
+
   const billsHTML = invoices.map((inv, idx) => {
     const items = inv.items || [];
     const itemRowsHTML = items.map(item => `
       <tr>
-        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;">&nbsp;&nbsp;&nbsp;${item.description || ''}</td>
-        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;text-align:right;">${Number(item.rate || 0).toFixed(2)}</td>
-        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;text-align:right;">${item.quantity || 0}</td>
-        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;text-align:center;">${item.pack || ''}</td>
-        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#000;border-bottom:1px dotted #999;text-align:right;font-weight:bold;">${Number(item.amount || 0).toFixed(2)}</td>
+        <td style="padding:3px 8px;font-size:11px;${B}border-bottom:1px dotted #888;">&nbsp;&nbsp;&nbsp;${item.description || ''}</td>
+        <td style="padding:3px 8px;font-size:11px;${B}border-bottom:1px dotted #888;text-align:right;">${Number(item.rate || 0).toFixed(2)}</td>
+        <td style="padding:3px 8px;font-size:11px;${B}border-bottom:1px dotted #888;text-align:right;">${item.quantity || 0}</td>
+        <td style="padding:3px 8px;font-size:11px;${B}border-bottom:1px dotted #888;text-align:center;">${item.pack || ''}</td>
+        <td style="padding:3px 8px;font-size:11px;${B}border-bottom:1px dotted #888;text-align:right;">${Number(item.amount || 0).toFixed(2)}</td>
       </tr>
     `).join('');
 
-    const netAmt = Number(inv.netAmount || inv.grandTotal || 0);
-    const paidAmt = Number(inv.paidAmount || 0);
-    const balAmt = Number(inv.balanceAmount || 0);
+    const netAmt  = Number(inv.netAmount || inv.grandTotal || 0);
+    const balAmt  = Number(inv.balanceAmount || 0);
 
     return `
-      <tr style="background:${idx % 2 === 0 ? '#f9f9f9' : '#fff'};">
-        <td colspan="8" style="padding:0;border-bottom:2px solid #555;">
+      <tr style="background:${idx % 2 === 0 ? '#f5f5f5' : '#fff'};">
+        <td colspan="8" style="padding:0;border-bottom:2px solid #444;">
           <table style="width:100%;border-collapse:collapse;">
             <!-- Bill Header Row -->
-            <tr style="background:#333;color:#fff;">
-              <td style="padding:3px 6px;font-size:10px;font-weight:bold;width:55px;">#${inv.invoiceNo}</td>
-              <td style="padding:3px 6px;font-size:10px;">${new Date(inv.invoiceDate).toLocaleDateString('en-IN')}</td>
-              <td style="padding:3px 6px;font-size:10px;font-weight:bold;">${inv.buyerName}</td>
-              ${inv.buyerPhone ? `<td style="padding:3px 6px;font-size:10px;color:#ccc;">${inv.buyerPhone}</td>` : '<td></td>'}
-              <td style="padding:3px 6px;font-size:10px;text-align:right;">${items.length} item${items.length !== 1 ? 's' : ''}</td>
-              <td style="padding:3px 6px;font-size:10px;text-align:right;font-weight:bold;">₹${netAmt.toFixed(2)}</td>
-              <td style="padding:3px 6px;font-size:10px;text-align:right;color:${balAmt > 0 ? '#ff6b6b' : '#90ee90'};">
-                ${balAmt > 0 ? `BAL ₹${balAmt.toFixed(2)}` : '✓ PAID'}
+            <tr style="background:#222;color:#fff;">
+              <td style="padding:4px 8px;font-size:11px;${B}width:60px;color:#fff;">#${inv.invoiceNo}</td>
+              <td style="padding:4px 8px;font-size:11px;${B}width:80px;color:#fff;">${new Date(inv.invoiceDate).toLocaleDateString('en-IN')}</td>
+              <td style="padding:4px 8px;font-size:11px;${B}color:#fff;">${inv.buyerName}</td>
+              ${inv.buyerPhone ? `<td style="padding:4px 8px;font-size:11px;font-weight:700;color:#ddd;width:100px;">${inv.buyerPhone}</td>` : '<td style="width:100px;"></td>'}
+              <td style="padding:4px 8px;font-size:11px;${B}text-align:right;width:55px;color:#fff;">${items.length} item${items.length !== 1 ? 's' : ''}</td>
+              <td style="padding:4px 8px;font-size:11px;${B}text-align:right;width:90px;color:#fff;">&#8377;${netAmt.toFixed(2)}</td>
+              <td style="padding:4px 8px;font-size:11px;font-weight:900;text-align:right;width:100px;color:${balAmt > 0 ? '#ffaaaa' : '#aaffaa'};">
+                ${balAmt > 0 ? `BAL &#8377;${balAmt.toFixed(2)}` : '&#10003; PAID'}
               </td>
-              <td style="padding:3px 6px;font-size:10px;text-align:center;">
-                <span style="background:${inv.paymentStatus === 'Paid' ? '#2d6a4f' : inv.paymentStatus === 'Partial' ? '#7d4e00' : '#7d0000'};color:#fff;padding:1px 6px;border-radius:3px;font-size:9px;">
+              <td style="padding:4px 8px;font-size:11px;text-align:center;width:60px;">
+                <span style="background:${inv.paymentStatus === 'Paid' ? '#1a5c38' : inv.paymentStatus === 'Partial' ? '#7d4e00' : '#7d0000'};color:#fff;padding:2px 7px;border-radius:3px;font-size:9px;font-weight:900;">
                   ${inv.paymentStatus}
                 </span>
               </td>
@@ -85,23 +87,23 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
             <tr>
               <td colspan="8" style="padding:0;">
                 <table style="width:100%;border-collapse:collapse;background:#fff;">
-                  <tr style="background:#e8e8e8;">
-                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:left;">Product</th>
-                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:right;width:60px;">Rate</th>
-                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:right;width:40px;">Qty</th>
-                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:center;width:40px;">Unit</th>
-                    <th style="padding:2px 6px;font-size:10px;font-weight:900;color:#000;text-align:right;width:65px;">Amount</th>
+                  <tr style="background:#ddd;">
+                    <th style="padding:3px 8px;font-size:11px;font-weight:900;color:#000;text-align:left;">Product</th>
+                    <th style="padding:3px 8px;font-size:11px;font-weight:900;color:#000;text-align:right;width:65px;">Rate</th>
+                    <th style="padding:3px 8px;font-size:11px;font-weight:900;color:#000;text-align:right;width:45px;">Qty</th>
+                    <th style="padding:3px 8px;font-size:11px;font-weight:900;color:#000;text-align:center;width:45px;">Unit</th>
+                    <th style="padding:3px 8px;font-size:11px;font-weight:900;color:#000;text-align:right;width:70px;">Amount</th>
                   </tr>
                   ${itemRowsHTML}
                   <!-- Bill summary footer -->
-                  <tr style="background:#f0f0f0;border-top:1px solid #aaa;">
-                    <td colspan="3" style="padding:2px 6px;font-size:9px;font-weight:700;color:#000;">
-                      ${inv.cgstAmount > 0 ? `CGST: ₹${Number(inv.cgstAmount).toFixed(2)}` : ''}
-                      ${inv.sgstAmount > 0 ? ` | SGST: ₹${Number(inv.sgstAmount).toFixed(2)}` : ''}
-                      ${inv.transport > 0 ? ` | Transport: ₹${Number(inv.transport).toFixed(2)}` : ''}
+                  <tr style="background:#ebebeb;border-top:1px solid #aaa;">
+                    <td colspan="3" style="padding:3px 8px;font-size:10px;font-weight:900;color:#000;">
+                      ${inv.cgstAmount > 0 ? `CGST: &#8377;${Number(inv.cgstAmount).toFixed(2)}` : ''}
+                      ${inv.sgstAmount > 0 ? ` | SGST: &#8377;${Number(inv.sgstAmount).toFixed(2)}` : ''}
+                      ${inv.transport > 0 ? ` | Transport: &#8377;${Number(inv.transport).toFixed(2)}` : ''}
                     </td>
-                    <td style="padding:2px 6px;font-size:10px;text-align:right;font-weight:900;color:#000;">Net:</td>
-                    <td style="padding:2px 6px;font-size:10px;text-align:right;font-weight:bold;">₹${netAmt.toFixed(2)}</td>
+                    <td style="padding:3px 8px;font-size:11px;text-align:right;font-weight:900;color:#000;">Net:</td>
+                    <td style="padding:3px 8px;font-size:11px;text-align:right;font-weight:900;color:#000;">&#8377;${netAmt.toFixed(2)}</td>
                   </tr>
                 </table>
               </td>
@@ -113,39 +115,39 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
   }).join('');
 
   const headerHTML = `
-    <div style="text-align:center;font-size:11px;font-weight:900;color:#000;margin-bottom:4px;font-family:'Noto Sans Tamil','Latha','Arial Unicode MS',Arial,sans-serif;letter-spacing:3px;">ஸ்ரீ பாண்டி துணை</div>
+    <div style="text-align:center;font-size:12px;font-weight:900;color:#000;margin-bottom:4px;font-family:'Noto Sans Tamil','Latha','Arial Unicode MS',Arial,sans-serif;letter-spacing:3px;">&#2ஸ்ரீ பாண்டி துணை</div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      ${fish1B64 ? `<img src="${fish1B64}" alt="" style="width:90px;height:80px;object-fit:contain;" />` : '<div style="width:70px;"></div>'}
+      ${fish1B64 ? `<img src="${fish1B64}" alt="" style="width:95px;height:85px;object-fit:contain;" />` : '<div style="width:75px;"></div>'}
       <div style="text-align:center;flex:1;padding:0 10px;">
-        ${bannerB64 ? `<img src="${bannerB64}" alt="Banner" style="max-width:350px;max-height:100px;object-fit:contain;display:block;margin:0 auto 4px;" />` : ''}
-        <div style="font-weight:900;font-size:16px;letter-spacing:2px;">MUTHUPANDI FISH FARM</div>
-        <div style="font-size:10px;color:#555;">6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
-        <div style="font-size:10px;color:#555;">Contact 9842186330 &nbsp; 9842886330</div>
+        ${bannerB64 ? `<img src="${bannerB64}" alt="Banner" style="max-width:360px;max-height:100px;object-fit:contain;display:block;margin:0 auto 4px;" />` : ''}
+        <div style="font-weight:900;font-size:17px;letter-spacing:2px;color:#000;">MUTHUPANDI FISH FARM</div>
+        <div style="font-size:10px;font-weight:900;color:#333;">6/201 ITI COLONY, AATHIKULAM, K.PUDUR - MADURAI 7 TAMILNADU</div>
+        <div style="font-size:10px;font-weight:900;color:#333;">Contact 9842186330 &nbsp; 9842886330</div>
       </div>
-      ${fish2B64 ? `<img src="${fish2B64}" alt="" style="width:90px;height:80px;object-fit:contain;" />` : '<div style="width:70px;"></div>'}
+      ${fish2B64 ? `<img src="${fish2B64}" alt="" style="width:95px;height:85px;object-fit:contain;" />` : '<div style="width:75px;"></div>'}
     </div>
   `;
 
   const summaryHTML = `
-    <div style="border:2px solid #000;margin-top:8px;">
-      <div style="background:#333;color:#fff;text-align:center;padding:4px;font-weight:900;font-size:11px;letter-spacing:3px;">SUMMARY</div>
+    <div style="border:2px solid #000;margin-top:10px;">
+      <div style="background:#222;color:#fff;text-align:center;padding:5px;font-weight:900;font-size:12px;letter-spacing:4px;">SUMMARY</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);">
         ${[
           ['Total Invoices', data.count],
-          ['Total Sales', `₹${Number(data.totalSales).toFixed(2)}`],
-          ['Total GST', `₹${Number(data.totalGst).toFixed(2)}`],
-          ['CGST', `₹${Number(data.totalCgst).toFixed(2)}`],
-          ['SGST', `₹${Number(data.totalSgst).toFixed(2)}`],
-          ['Amount Collected', `₹${Number(data.totalPaid).toFixed(2)}`],
-          ['Balance Pending', `₹${Number(data.totalBalance).toFixed(2)}`],
+          ['Total Sales', `&#8377;${Number(data.totalSales).toFixed(2)}`],
+          ['Total GST', `&#8377;${Number(data.totalGst).toFixed(2)}`],
+          ['CGST', `&#8377;${Number(data.totalCgst).toFixed(2)}`],
+          ['SGST', `&#8377;${Number(data.totalSgst).toFixed(2)}`],
+          ['Amount Collected', `&#8377;${Number(data.totalPaid).toFixed(2)}`],
+          ['Balance Pending', `&#8377;${Number(data.totalBalance).toFixed(2)}`],
         ].map(([label, value]) => `
-          <div style="padding:6px 10px;border-right:1px solid #ccc;border-bottom:1px solid #ccc;">
-            <div style="font-size:10px;font-weight:700;color:#000;">${label}</div>
-            <div style="font-size:12px;font-weight:900;color:#000;">${value}</div>
+          <div style="padding:7px 12px;border-right:1px solid #bbb;border-bottom:1px solid #bbb;">
+            <div style="font-size:10px;font-weight:900;color:#000;">${label}</div>
+            <div style="font-size:13px;font-weight:900;color:#000;">${value}</div>
           </div>
         `).join('')}
       </div>
-      <div style="text-align:center;padding:5px;font-size:10px;font-weight:700;color:#000;border-top:1px solid #ccc;">
+      <div style="text-align:center;padding:5px;font-size:10px;font-weight:900;color:#000;border-top:1px solid #bbb;">
         Generated: ${generatedDate} ${generatedTime} &nbsp;|&nbsp; This is a Computer Generated Sales Report
       </div>
     </div>
@@ -158,7 +160,7 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
   <title>Sales Report - Muthupandi Fish Farm</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #fff; font-family: 'Courier New', Courier, monospace; }
+    body { background: #fff; font-family: Arial, sans-serif; color: #000; }
     @media print {
       @page { size: A4; margin: 8mm; }
       body { margin: 0; }
@@ -166,29 +168,29 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
   </style>
 </head>
 <body>
-  <div style="width:210mm;background:#fff;font-family:'Courier New',Courier,monospace;color:#000;padding:8mm;box-sizing:border-box;">
+  <div style="width:210mm;background:#fff;font-family:Arial,sans-serif;color:#000;padding:8mm;box-sizing:border-box;">
     ${headerHTML}
     <div style="border:2px solid #000;">
       <!-- Title bar -->
-      <div style="text-align:center;padding:5px;border-bottom:2px solid #000;font-weight:900;font-size:14px;letter-spacing:5px;background:#f0f0f0;">
+      <div style="text-align:center;padding:5px;border-bottom:2px solid #000;font-weight:900;font-size:15px;letter-spacing:6px;background:#efefef;color:#000;">
         SALES REPORT
       </div>
       <!-- Period bar -->
-      <div style="display:flex;justify-content:space-between;padding:4px 10px;border-bottom:2px solid #000;font-size:10px;background:#e8e8e8;">
-        <span style="font-weight:900;color:#000;"><strong>PERIOD:</strong> ${periodLabel}</span>
-        <span style="font-weight:900;color:#000;"><strong>TOTAL BILLS:</strong> ${data.count}</span>
-        <span style="font-weight:900;color:#000;"><strong>GENERATED:</strong> ${generatedDate} ${generatedTime}</span>
+      <div style="display:flex;justify-content:space-between;padding:5px 10px;border-bottom:2px solid #000;font-size:11px;background:#e0e0e0;">
+        <span style="font-weight:900;color:#000;">PERIOD: ${periodLabel}</span>
+        <span style="font-weight:900;color:#000;">TOTAL BILLS: ${data.count}</span>
+        <span style="font-weight:900;color:#000;">GENERATED: ${generatedDate} ${generatedTime}</span>
       </div>
       <!-- Column header for bills -->
-      <div style="display:flex;background:#555;color:#fff;padding:3px 6px;font-size:10px;font-weight:bold;border-bottom:1px solid #000;">
-        <span style="width:55px;">INV NO</span>
-        <span style="width:70px;">DATE</span>
+      <div style="display:flex;background:#333;color:#fff;padding:4px 8px;font-size:11px;font-weight:900;border-bottom:1px solid #000;">
+        <span style="width:60px;">INV NO</span>
+        <span style="width:80px;">DATE</span>
         <span style="flex:1;">BUYER</span>
-        <span style="width:90px;">PHONE</span>
-        <span style="width:50px;text-align:right;">ITEMS</span>
-        <span style="width:80px;text-align:right;">NET AMT</span>
-        <span style="width:90px;text-align:right;">BALANCE</span>
-        <span style="width:55px;text-align:center;">STATUS</span>
+        <span style="width:100px;">PHONE</span>
+        <span style="width:55px;text-align:right;">ITEMS</span>
+        <span style="width:90px;text-align:right;">NET AMT</span>
+        <span style="width:100px;text-align:right;">BALANCE</span>
+        <span style="width:60px;text-align:center;">STATUS</span>
       </div>
       <!-- Bills grouped -->
       <table style="width:100%;border-collapse:collapse;">
@@ -197,11 +199,11 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
         </tbody>
       </table>
       <!-- Totals row -->
-      <div style="display:flex;background:#222;color:#fff;padding:5px 6px;font-size:11px;font-weight:bold;border-top:2px solid #000;">
+      <div style="display:flex;background:#111;color:#fff;padding:6px 8px;font-size:12px;font-weight:900;border-top:2px solid #000;">
         <span style="flex:1;">TOTAL (${data.count} Bills)</span>
-        <span style="width:80px;text-align:right;">₹${Number(data.totalSales).toFixed(2)}</span>
-        <span style="width:90px;text-align:right;color:#ffaaaa;">₹${Number(data.totalBalance).toFixed(2)}</span>
-        <span style="width:55px;"></span>
+        <span style="width:90px;text-align:right;">&#8377;${Number(data.totalSales).toFixed(2)}</span>
+        <span style="width:100px;text-align:right;color:#ffaaaa;">&#8377;${Number(data.totalBalance).toFixed(2)}</span>
+        <span style="width:60px;"></span>
       </div>
     </div>
     ${summaryHTML}

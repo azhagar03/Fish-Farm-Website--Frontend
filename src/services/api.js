@@ -40,12 +40,22 @@ export const customerAPI = {
   delete: (id) => API.delete(`/api/customers/${id}`)
 };
 
+// export const accountingYearAPI = {
+//   getAll: () => API.get('/api/accounting-years'),
+//   getActive: () => API.get('/api/accounting-years/active'),
+//   create: (data) => API.post('/api/accounting-years', data),
+//   activate: (id) => API.put(`/api/accounting-years/${id}/activate`),
+//   getRevenue: (id) => API.get(`/api/accounting-years/${id}/revenue`)
+// };
+
 export const accountingYearAPI = {
-  getAll: () => API.get('/api/accounting-years'),
-  getActive: () => API.get('/api/accounting-years/active'),
-  create: (data) => API.post('/api/accounting-years', data),
-  activate: (id) => API.put(`/api/accounting-years/${id}/activate`),
-  getRevenue: (id) => API.get(`/api/accounting-years/${id}/revenue`)
+  getAll:           ()   => API.get('api/accounting-years'),
+  getActive:        ()   => API.get('api/accounting-years/active'),
+  getNextInvoiceNo: ()   => API.get('api/accounting-years/next-invoice-no'),   // ← NEW
+  create:           (d)  => API.post('api/accounting-years', d),
+  activate:         (id) => API.put(`api/accounting-years/${id}/activate`),
+  getRevenue:       (id) => API.get(`api/accounting-years/${id}/revenue`),
+  syncCounter:      (id) => API.post(`api/accounting-years/${id}/sync`),
 };
 
 export const adminAPI = {
