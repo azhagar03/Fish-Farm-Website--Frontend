@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { productAPI } from '../../services/api';
 
-const UNITS = ['Pcs', 'Nos', 'Kg', 'Ltr', 'Round', 'Set', 'Pair'];
+const UNITS = ['Pcs', 'Nos', 'Kg', 'Ltr', 'Round', 'Set', 'Pair','Tank','Dozen','Glass','Meter','Big','Group','Free'];
 const EMPTY_FORM = { name: '', description: '', unit: 'Pcs', stock: '', isActive: true };
 
 const ProductManager = () => {
