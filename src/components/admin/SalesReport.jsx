@@ -166,7 +166,7 @@ const generateSalesReportHTML = async (data, period, startDate, endDate) => {
         </td>
       </tr>`;
 
-    return headerRow + itemRows + extraRow + totalRow;
+    return itemRows + extraRow + totalRow + headerRow;
   };
 
   // Build all invoice rows

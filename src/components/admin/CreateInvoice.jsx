@@ -275,6 +275,71 @@ const generateInvoiceHTML = async (invoice) => {
 };
 
 /* ══════════════════════════════════════════════
+   Smart Dropdown Position Calculator
+   - Right side of input ஓட show பண்ணும்
+   - Right side space இல்லன்னா left side-ல show பண்ணும்
+   - Bottom space இல்லன்னா above-ல show பண்ணும்
+══════════════════════════════════════════════ */
+const getSmartDropdownPos = (inputEl) => {
+  if (!inputEl) return null;
+
+  const inputRect    = inputEl.getBoundingClientRect();
+  const dropW        = 300;   // dropdown width
+  const dropMaxH     = 260;   // dropdown max height
+  const viewportW    = window.innerWidth;
+  const viewportH    = window.innerHeight;
+  const margin       = 8;     // gap between input and dropdown
+
+  // ── Horizontal: try RIGHT side first ──
+  const rightAvail  = viewportW - (inputRect.right + margin);
+  const leftAvail   = inputRect.left - margin;
+
+  let left;
+  let anchorSide; // 'right' | 'left' | 'below-input'
+
+  if (rightAvail >= dropW) {
+    // Show to the RIGHT of the input cell
+    left       = inputRect.right + margin;
+    anchorSide = 'right';
+  } else if (leftAvail >= dropW) {
+    // Show to the LEFT of the input cell
+    left       = inputRect.left - dropW - margin;
+    anchorSide = 'left';
+  } else {
+    // Not enough space on either side → fallback below input, aligned to input left
+    left       = Math.max(margin, Math.min(inputRect.left, viewportW - dropW - margin));
+    anchorSide = 'below-input';
+  }
+
+  // ── Vertical ──
+  let top;
+  if (anchorSide === 'right' || anchorSide === 'left') {
+    // Align top of dropdown with top of input row
+    const spaceBelow = viewportH - inputRect.top - margin;
+    if (spaceBelow >= Math.min(dropMaxH, 120)) {
+      top = inputRect.top;
+    } else {
+      // Flip: align bottom of dropdown with bottom of input
+      top = Math.max(margin, inputRect.bottom - dropMaxH);
+    }
+    // Clamp so it never goes below viewport
+    top = Math.min(top, viewportH - dropMaxH - margin);
+    top = Math.max(top, margin);
+  } else {
+    // below-input fallback
+    const spaceBelow = viewportH - inputRect.bottom - margin;
+    if (spaceBelow >= Math.min(dropMaxH, 120)) {
+      top = inputRect.bottom + margin;
+    } else {
+      // Open upward
+      top = Math.max(margin, inputRect.top - dropMaxH - margin);
+    }
+  }
+
+  return { top, left, width: dropW, anchorSide };
+};
+
+/* ══════════════════════════════════════════════
    CreateInvoice component
 ══════════════════════════════════════════════ */
 const CreateInvoice = ({ onSaved, editData }) => {
@@ -287,10 +352,9 @@ const CreateInvoice = ({ onSaved, editData }) => {
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDrop, setShowCustomerDrop] = useState(false);
 
-  // ── FIX: nextInvoiceNo now comes from active year's counter, not last invoice ──
-  const [nextInvoiceNo, setNextInvoiceNo]   = useState(null);
+  const [nextInvoiceNo, setNextInvoiceNo]     = useState(null);
   const [activeYearLabel, setActiveYearLabel] = useState(null);
-  const [noActiveYear, setNoActiveYear]     = useState(false);
+  const [noActiveYear, setNoActiveYear]       = useState(false);
 
   const [descDropdown, setDescDropdown] = useState({});
 
@@ -319,29 +383,26 @@ const CreateInvoice = ({ onSaved, editData }) => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── FIX: fetch nextInvoiceNo from active year API ──
-const fetchNextInvoiceNo = async () => {
-  try {
-    // Use existing /active endpoint instead of new one
-    const res = await accountingYearAPI.getActive();
-    const year = res.data.data;
-    if (!year) { setNoActiveYear(true); return; }
-    setNextInvoiceNo((year.invoiceCounter || 0) + 1);
-    setActiveYearLabel(year.label);
-    setNoActiveYear(false);
-  } catch (err) {
-    setNoActiveYear(true);
-    setNextInvoiceNo(null);
-    setActiveYearLabel(null);
-  }
-};
+  const fetchNextInvoiceNo = async () => {
+    try {
+      const res  = await accountingYearAPI.getActive();
+      const year = res.data.data;
+      if (!year) { setNoActiveYear(true); return; }
+      setNextInvoiceNo((year.invoiceCounter || 0) + 1);
+      setActiveYearLabel(year.label);
+      setNoActiveYear(false);
+    } catch (err) {
+      setNoActiveYear(true);
+      setNextInvoiceNo(null);
+      setActiveYearLabel(null);
+    }
+  };
 
   useEffect(() => {
     productAPI.getAll({ isActive: true }).then(r => setProducts(r.data.data || [])).catch(() => {});
     customerAPI.getAll().then(r => setCustomers(r.data.data || [])).catch(() => {});
 
     if (editData) {
-      // Edit mode: show the existing invoice number
       setNextInvoiceNo(editData.invoiceNo);
       setActiveYearLabel(editData.accountingYearLabel || null);
       setHeader({
@@ -358,7 +419,6 @@ const fetchNextInvoiceNo = async () => {
       });
       setItems(editData.items?.map(i => ({ ...i, _tempId: Math.random() })) || [emptyItem()]);
     } else {
-      // Create mode: fetch next number from active year
       fetchNextInvoiceNo();
     }
   }, [editData]);
@@ -374,11 +434,10 @@ const fetchNextInvoiceNo = async () => {
   const paidAmt      = parseFloat(header.paidAmount||0);
   const balanceAmt   = parseFloat((netAmount - paidAmt).toFixed(2));
 
-  const getInputRect = (tempId) => {
+  /* ── Smart position: uses right-side by default ── */
+  const getDropdownPos = (tempId) => {
     const el = inputRefs.current[tempId];
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return { top: r.bottom + 4, left: r.left, width: r.width };
+    return getSmartDropdownPos(el);
   };
 
   const setCellRef = (rowIdx, col, el) => {
@@ -390,7 +449,7 @@ const fetchNextInvoiceNo = async () => {
   const focusCell = useCallback((rowIdx, col) => {
     setTimeout(() => {
       const key = `${rowIdx}_${col}`;
-      const el = cellRefs.current[key];
+      const el  = cellRefs.current[key];
       if (!el) return;
       el.focus();
       if (el.tagName === 'INPUT') {
@@ -587,7 +646,6 @@ const fetchNextInvoiceNo = async () => {
         ? await invoiceAPI.update(editData._id, payload)
         : await invoiceAPI.create(payload);
 
-      // Update stock
       for (const item of payload.items) {
         const prod = products.find(p => p.name === item.description);
         if (prod?._id && prod.stock !== undefined) {
@@ -615,7 +673,7 @@ const fetchNextInvoiceNo = async () => {
     setCustomerSearch('');
     setDescDropdown({});
     cellRefs.current = {};
-    fetchNextInvoiceNo(); // re-fetch for the new invoice
+    fetchNextInvoiceNo();
   };
 
   if (saved && savedInvoice) {
@@ -628,30 +686,144 @@ const fetchNextInvoiceNo = async () => {
     <div>
       {toast && <Toast toast={toast} />}
 
-      {/* Fixed-position dropdowns */}
+      {/* ══ Smart Fixed-position Dropdowns ══
+          Right side-ல show ஆகும், space இல்லன்னா left/above adjust ஆகும் */}
       {items.map((item) => {
         const dd  = descDropdown[item._tempId] || {};
         if (!dd.show) return null;
-        const pos = getInputRect(item._tempId);
+
+        const pos = getDropdownPos(item._tempId);
         if (!pos) return null;
+
         const filtered = dd.filtered || [];
         const hi       = dd.highlightIdx ?? 0;
+
         return (
-          <div key={`dd-${item._tempId}`} ref={el => { dropdownRefs.current[item._tempId] = el; }}
-            style={{ position:'fixed', top:pos.top, left:pos.left, width:Math.max(pos.width,280), zIndex:99999, background:'#0b1f35', border:'2px solid rgba(6,182,212,0.55)', borderRadius:8, maxHeight:240, overflowY:'auto', boxShadow:'0 12px 40px rgba(0,0,0,0.85)', scrollbarWidth:'thin', scrollbarColor:'rgba(6,182,212,0.4) transparent' }}>
+          <div
+            key={`dd-${item._tempId}`}
+            ref={el => { dropdownRefs.current[item._tempId] = el; }}
+            style={{
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              width: pos.width,
+              zIndex: 99999,
+              background: '#0b1f35',
+              border: '2px solid rgba(6,182,212,0.55)',
+              borderRadius: 8,
+              maxHeight: 260,
+              overflowY: 'auto',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.85)',
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(6,182,212,0.4) transparent',
+            }}
+          >
+            {/* Small arrow indicator showing which side the dropdown is anchored to */}
+            {pos.anchorSide === 'right' && (
+              <div style={{
+                position: 'absolute',
+                left: -8,
+                top: 14,
+                width: 0,
+                height: 0,
+                borderTop: '7px solid transparent',
+                borderBottom: '7px solid transparent',
+                borderRight: '8px solid rgba(6,182,212,0.55)',
+              }}/>
+            )}
+            {pos.anchorSide === 'left' && (
+              <div style={{
+                position: 'absolute',
+                right: -8,
+                top: 14,
+                width: 0,
+                height: 0,
+                borderTop: '7px solid transparent',
+                borderBottom: '7px solid transparent',
+                borderLeft: '8px solid rgba(6,182,212,0.55)',
+              }}/>
+            )}
+
+            {/* Header label */}
+            <div style={{
+              padding: '6px 12px',
+              borderBottom: '1px solid rgba(6,182,212,0.2)',
+              fontSize: '0.7rem',
+              color: '#06b6d4',
+              fontWeight: 700,
+              letterSpacing: 1,
+              textTransform: 'uppercase',
+              background: 'rgba(6,182,212,0.06)',
+            }}>
+              {filtered.length > 0
+                ? `${filtered.length} product${filtered.length > 1 ? 's' : ''} found`
+                : 'No products found'}
+            </div>
+
             {filtered.length > 0 ? filtered.map((p, i) => (
-              <div key={p._id}
+              <div
+                key={p._id}
                 onMouseDown={e => { e.preventDefault(); confirmProduct(item._tempId, p.name, true); }}
-                onMouseEnter={() => setDescDropdown(prev => ({ ...prev, [item._tempId]: { ...prev[item._tempId], highlightIdx: i } }))}
-                style={{ padding:'9px 14px', cursor:'pointer', borderBottom:'1px solid rgba(6,182,212,0.15)', background:i===hi?'rgba(6,182,212,0.30)':'transparent', transition:'background 0.1s', display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ width:14, fontSize:11, color:'#06b6d4', fontWeight:900, visibility:i===hi?'visible':'hidden' }}>▶</span>
-                <div>
-                  <div style={{ fontWeight:800, color:i===hi?'#ffffff':'#c8e6ff', fontSize:'0.88rem' }}>{p.name}</div>
-                  <div style={{ fontSize:'0.72rem', color:'#7dd3fc', fontWeight:600, marginTop:1 }}>{p.unit}{p.stock !== undefined ? ` • Stock: ${p.stock}` : ''}</div>
+                onMouseEnter={() => setDescDropdown(prev => ({
+                  ...prev,
+                  [item._tempId]: { ...prev[item._tempId], highlightIdx: i },
+                }))}
+                style={{
+                  padding: '9px 14px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid rgba(6,182,212,0.12)',
+                  background: i === hi ? 'rgba(6,182,212,0.28)' : 'transparent',
+                  transition: 'background 0.1s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <span style={{
+                  width: 14,
+                  fontSize: 11,
+                  color: '#06b6d4',
+                  fontWeight: 900,
+                  visibility: i === hi ? 'visible' : 'hidden',
+                  flexShrink: 0,
+                }}>▶</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontWeight: 800,
+                    color: i === hi ? '#ffffff' : '#c8e6ff',
+                    fontSize: '0.88rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>{p.name}</div>
+                  <div style={{
+                    fontSize: '0.72rem',
+                    color: '#7dd3fc',
+                    fontWeight: 600,
+                    marginTop: 1,
+                  }}>
+                    {p.unit}
+                    {p.stock !== undefined
+                      ? ` • Stock: ${p.stock < 10
+                          ? `⚠ ${p.stock}`
+                          : p.stock}`
+                      : ''}
+                  </div>
                 </div>
+                {p.price !== undefined && (
+                  <div style={{
+                    fontSize: '0.78rem',
+                    color: '#fbbf24',
+                    fontWeight: 700,
+                    flexShrink: 0,
+                  }}>₹{p.price}</div>
+                )}
               </div>
             )) : (dd.typed||'').length > 0 ? (
-              <div style={{ padding:'10px 14px', color:'#fca5a5', fontSize:'0.82rem', fontWeight:700 }}>No products found — please select from list</div>
+              <div style={{ padding: '14px', color: '#fca5a5', fontSize: '0.82rem', fontWeight: 700, textAlign: 'center' }}>
+                <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>🔍</div>
+                No products match "{dd.typed}"
+              </div>
             ) : null}
           </div>
         );
@@ -668,7 +840,6 @@ const fetchNextInvoiceNo = async () => {
           </small>
         </div>
         <div className="d-flex align-items-center gap-3 flex-wrap">
-          {/* ── FIX: Show invoice no from active year counter ── */}
           {noActiveYear ? (
             <div style={{ background:'rgba(239,68,68,0.12)', border:'2px solid rgba(239,68,68,0.45)', borderRadius:10, padding:'6px 16px', textAlign:'center' }}>
               <div style={{ fontSize:'0.72rem', color:'#fca5a5', fontWeight:700 }}>⚠ No Active Year</div>
@@ -684,7 +855,9 @@ const fetchNextInvoiceNo = async () => {
           ) : null}
 
           <button className="btn-ocean btn" onClick={handleSave} disabled={saving || noActiveYear}>
-            {saving ? <><span className="spinner-border spinner-border-sm me-2"/>Saving...</> : <><i className="bi bi-floppy me-2"/>Save Invoice</>}
+            {saving
+              ? <><span className="spinner-border spinner-border-sm me-2"/>Saving...</>
+              : <><i className="bi bi-floppy me-2"/>Save Invoice</>}
           </button>
         </div>
       </div>
@@ -710,12 +883,14 @@ const fetchNextInvoiceNo = async () => {
         <div className="row g-3">
           <div className="col-md-4" style={{ position:'relative' }}>
             <label className="form-label" style={{ color:'var(--text-secondary)', fontSize:'0.82rem' }}>Customer Name *</label>
-            <input className="form-control input-ocean"
+            <input
+              className="form-control input-ocean"
               value={customerSearch || header.buyerName}
               onChange={e => { setCustomerSearch(e.target.value); setHeader(p => ({ ...p, buyerName: e.target.value, customerId:'' })); setShowCustomerDrop(true); }}
               onFocus={() => setShowCustomerDrop(true)}
               onBlur={() => setTimeout(() => setShowCustomerDrop(false), 200)}
-              placeholder="Type or select customer..." />
+              placeholder="Type or select customer..."
+            />
             {showCustomerDrop && filteredCustomers.length > 0 && (
               <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:1000, background:'var(--ocean-mid)', border:'1px solid var(--glass-border)', borderRadius:8, maxHeight:220, overflowY:'auto', boxShadow:'0 8px 24px rgba(0,0,0,0.4)' }}>
                 {filteredCustomers.map(c => (
@@ -787,11 +962,20 @@ const fetchNextInvoiceNo = async () => {
                         onBlur={() => handleDescBlur(item._tempId)}
                         onKeyDown={e => handleDescKeyDown(e, item._tempId, rowIdx)}
                         placeholder="↓ Arrow or type to search..."
-                        style={{ fontSize:'0.85rem', borderColor: item.description && !item._confirmed ? 'rgba(239,68,68,0.6)' : undefined }}
+                        style={{
+                          fontSize: '0.85rem',
+                          borderColor: item.description && !item._confirmed
+                            ? 'rgba(239,68,68,0.6)'
+                            : undefined,
+                        }}
                         autoComplete="off"
                       />
                       {selProd?.stock !== undefined && item._confirmed && (
-                        <div style={{ fontSize:'0.7rem', marginTop:2, color: selProd.stock < 10 ? '#fbbf24' : '#4ade80' }}>
+                        <div style={{
+                          fontSize: '0.7rem',
+                          marginTop: 2,
+                          color: selProd.stock < 10 ? '#fbbf24' : '#4ade80',
+                        }}>
                           Stock: {selProd.stock} {selProd.unit}
                         </div>
                       )}
@@ -860,7 +1044,9 @@ const fetchNextInvoiceNo = async () => {
 
       <div className="d-flex gap-2">
         <button className="btn-ocean btn" onClick={handleSave} disabled={saving || noActiveYear}>
-          {saving ? <><span className="spinner-border spinner-border-sm me-2"/>Saving...</> : <><i className="bi bi-floppy me-2"/>Save Invoice</>}
+          {saving
+            ? <><span className="spinner-border spinner-border-sm me-2"/>Saving...</>
+            : <><i className="bi bi-floppy me-2"/>Save Invoice</>}
         </button>
       </div>
     </div>
